@@ -57,6 +57,14 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define FREQ_SEEK_DOWN_Pin GPIO_PIN_13
+#define FREQ_SEEK_DOWN_GPIO_Port GPIOC
+#define FREQ_SEEK_UP_Pin GPIO_PIN_14
+#define FREQ_SEEK_UP_GPIO_Port GPIOC
+#define LIGHT_SENSOR_Pin GPIO_PIN_15
+#define LIGHT_SENSOR_GPIO_Port GPIOC
+#define VFD_CS_Pin GPIO_PIN_12
+#define VFD_CS_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
