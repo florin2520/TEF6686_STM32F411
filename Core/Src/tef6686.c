@@ -203,10 +203,8 @@ void dsp_write_data(const uint8_t* data)
   for (;;)
   {
 	  len = pgm_read_byte(pa++);
-
 //	  if (len == 45)  // ???
 //	     break;
-
 	  first = pgm_read_byte(pa);
     if (!len)
       break;
@@ -224,9 +222,7 @@ void dsp_write_data(const uint8_t* data)
     	  data_to_send[i] = pgm_read_byte(pa++);
       }
 	  HAL_I2C_Master_Transmit(&hi2c1, (uint16_t)DSP_I2C, data_to_send, len, 1500);
-      //HAL_I2C_Master_Transmit(&hi2c1, (uint16_t)DSP_I2C, data_to_send, sizeof(data_to_send), 1500);
 	  memset(data_to_send, '\0', 45);
-
     }
   }
 }

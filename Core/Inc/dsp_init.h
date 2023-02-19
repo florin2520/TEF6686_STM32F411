@@ -12,7 +12,7 @@
 #define INIT_FLAG_PATCH1 (0xfe)
 #define INIT_FLAG_PATCH2 (0xfd)
 
- uint8_t DSP_INIT[] =
+ const uint8_t DSP_INIT[] =
 {
   0x03, 0x1C, 0x00, 0x00,                 // Clear Required Initialization Control
   0x03, 0x1C, 0x00, 0x74,                 // Set Required Initialization Control(1)
@@ -291,7 +291,7 @@
   0x05, 0x20, 0x16, 0x01, 0x00, 0x01,                                                                          // FM 22 Set_ChannelEqualizer       (1, 1)
 };
 
- uint8_t INIT_SET1[] =
+ const uint8_t INIT_SET1[] =
 {
   0x07, 0x20, 0x17, 0x01, 0x00, 0x01, 0x04, 0xB0,                                                              // FM 23 Set_NoiseBlanker           (1, 1, 1200)
   0x09, 0x20, 0x18, 0x01, 0x00, 0xD2, 0x00, 0xD2, 0x00, 0xFA,                                                  // FM 24 Set_NoiseBlanker_Options   (1, 210, 210, 250)
@@ -344,7 +344,7 @@
   0x00
 };
 
- uint8_t INIT_SET2[] =
+ const uint8_t INIT_SET2[] =
 {
   0x07, 0x20, 0x17, 0x01, 0x00, 0x01, 0x03, 0xE8,                                                               // FM 23 Set_NoiseBlanker (1, 1, 1000)
   0x09, 0x20, 0x18, 0x01, 0x00, 0x64, 0x00, 0x64, 0x00, 0xC8,                                                   // FM 24 Set_NoiseBlanker_Options (1, 100, 100, 200)
@@ -399,7 +399,7 @@
   0x00
 };
 
- uint8_t INIT_SET3[] =
+ const uint8_t INIT_SET3[] =
 {
   0x07, 0x20, 0x17, 0x01, 0x00, 0x01, 0x03, 0xE8,                                                              // FM 23 Set_NoiseBlanker           (1, 1, 1000)
   0x09, 0x20, 0x18, 0x01, 0x00, 0xD2, 0x00, 0xD2, 0x00, 0xFA,                                                  // FM 24 Set_NoiseBlanker_Options   (1, 210, 210, 250)
@@ -453,7 +453,7 @@
   0x00
 };
 
-  uint8_t INIT_SET4[] =
+  const uint8_t INIT_SET4[] =
 {
   0x07, 0x20, 0x17, 0x01, 0x00, 0x01, 0x03, 0xE8,                                                             // FM 23 Set_NoiseBlanker         (1, 1, 1000)
   0x09, 0x20, 0x18, 0x01, 0x00, 0xD2, 0x00, 0xD2, 0x00, 0xFA,                                                 // FM 24 Set_NoiseBlanker_Options (1, 210, 210, 250)

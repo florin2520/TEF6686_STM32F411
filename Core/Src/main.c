@@ -128,10 +128,10 @@ int main(void)
   setup();
 
   // set volume
-    volume = 80;
-    Set_Cmd(48, 11, 1, 0);  //unmute
-    int Setvolume = map(volume, 0, 100, -599, 50);
-    Set_Cmd(48, 10, 1, Setvolume);
+//    volume = 80;
+//    Set_Cmd(48, 11, 1, 0);  //unmute
+//    int Setvolume = map(volume, 0, 100, -599, 50);
+//    Set_Cmd(48, 10, 1, Setvolume);
 
   while (1)
   {
@@ -145,28 +145,28 @@ int main(void)
 
 	  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 
-	  freq = 102900; // Oltenia
-	  REG_FREQ = freq;
-	  if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000))
-	  {
-	    Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
-	    MODF_FREQ = REG_FREQ;
-	  }
+//	  freq = 102900; // Oltenia
+//	  REG_FREQ = freq;
+//	  if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000))
+//	  {
+//	    Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
+//	    MODF_FREQ = REG_FREQ;
+//	  }
 
-	  HAL_Delay(2000);
+	  HAL_Delay(500);
 
 	  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 
-	  freq = 104500; // europaFM
-	  REG_FREQ = freq;
-	  if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000))
-	  {
-	    Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
-	    MODF_FREQ = REG_FREQ;
-	  }
+//	  freq = 104500; // europaFM
+//	  REG_FREQ = freq;
+//	  if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000))
+//	  {
+//	    Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
+//	    MODF_FREQ = REG_FREQ;
+//	  }
 
 
-	  HAL_Delay(2000);
+	  HAL_Delay(500);
 //	  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 //      HAL_Delay(500);
 //      HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
