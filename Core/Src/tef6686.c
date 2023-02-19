@@ -120,6 +120,8 @@ uint8_t aTxBuffer[10];
 /* Exported macro ------------------------------------------------------------*/
 #define COUNTOF(__BUFFER__)   (sizeof(__BUFFER__) / sizeof(*(__BUFFER__)))
 
+
+//TODO DMA
 void Write(uint8_t *buf, uint8_t len)
 {
   //Wire.beginTransmission(DSP_I2C);
@@ -130,6 +132,7 @@ void Write(uint8_t *buf, uint8_t len)
   //Wire.endTransmission();
 }
 
+//TODO DMA
 void Read(uint8_t *buf, uint8_t len)
 {
   //uint8_t lenrec = Wire.requestFrom(DSP_I2C, len);
@@ -138,25 +141,7 @@ void Read(uint8_t *buf, uint8_t len)
     //*buf++ = Wire.read();
 }
 
-//void Set_Cmd(uint8_t mdl, uint8_t cmd, int len, ...)
-//{
-//  uint8_t buf[31];
-//  uint16_t temp;
-//  va_list vArgs;
-//  va_start(vArgs, len);
-//  buf[0] = mdl;
-//  buf[1] = cmd;
-//  buf[2] = 1;
-//  for (uint8_t i = 0; i < len; i++)
-//  {
-//    //temp = va_arg(vArgs, uint16_t);
-//	temp = va_arg(vArgs, int);
-//    buf[3 + i * 2] = (uint8_t)(temp >> 8);
-//    buf[4 + i * 2] = (uint8_t)temp;
-//  }
-//  va_end(vArgs);
-//  Write(buf, len * 2 + 3);
-//}
+
 
 void Set_Cmd(uint8_t mdl, uint8_t cmd, int len, ...)
 {
