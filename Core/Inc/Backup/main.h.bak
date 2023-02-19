@@ -63,8 +63,6 @@ void Error_Handler(void);
 #define FREQ_SEEK_UP_GPIO_Port GPIOC
 #define LIGHT_SENSOR_Pin GPIO_PIN_15
 #define LIGHT_SENSOR_GPIO_Port GPIOC
-#define FREQ_SEEK_DOWN_Pin GPIO_PIN_2
-#define FREQ_SEEK_DOWN_GPIO_Port GPIOA
 #define IR_SENSOR_Pin GPIO_PIN_4
 #define IR_SENSOR_GPIO_Port GPIOA
 #define VFD_CS_Pin GPIO_PIN_12
