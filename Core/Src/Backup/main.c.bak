@@ -1,4 +1,7 @@
 /* USER CODE BEGIN Header */
+
+// Functioneaza cu dsp_init declarat in RAM
+
 /**
   ******************************************************************************
   * @file           : main.c
@@ -18,9 +21,11 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "i2c.h"
 #include "spi.h"
 #include "tim.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -49,6 +54,9 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+
+uint8_t contor;
+
 char *start_radio = "Start radio...\n\r";
 char str1[30];
 char message_frequency[16];
@@ -110,6 +118,8 @@ int main(void)
   MX_SPI1_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_ADC1_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Encoder_Start_IT(&htim2, TIM_CHANNEL_ALL);
   HAL_TIM_Encoder_Start_IT(&htim3, TIM_CHANNEL_ALL);
@@ -123,45 +133,46 @@ int main(void)
 
   //start radio
   setup();
+  printf("Start radio\n");
+
+  // set volume
+//    volume = 80;
+//    Set_Cmd(48, 11, 1, 0);  //unmute
+//    int Setvolume = map(volume, 0, 100, -599, 50);
+//    Set_Cmd(48, 10, 1, Setvolume);
 
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//     loop();
-//     HAL_UART_Transmit(&huart2, (uint8_t *)"x\n", 2, HAL_MAX_DELAY);
-//     HAL_UART_Transmit(&huart2, (uint8_t *)"Y60\n", 4, HAL_MAX_DELAY);
-//     HAL_UART_Transmit(&huart2, (uint8_t *)"M0\n", 3, HAL_MAX_DELAY);
-
+      contor++;
 	  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
-	  // Tune to a frequency (to do keep filter settings)
-//	   freq = 102900;
-//	   REG_FREQ = freq;
+	  printf("LED on\n");
+	  //printf("Frecv: %lu\n", freq);
+	  //printf("Vol: %d\n", volume);
+	  printf("Contor: %d\n", contor);
+//	  freq = 102900; // Oltenia
+//	  REG_FREQ = freq;
 //	  if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000))
 //	  {
-//	     Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
-//	     MODF_FREQ = REG_FREQ;
+//	    Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
+//	    MODF_FREQ = REG_FREQ;
 //	  }
-	  HAL_Delay(1000);
+
+	  HAL_Delay(500);
 
 	  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
-	  // Tune to a frequency (to do keep filter settings)
-//	   freq = 104500;
-//	   REG_FREQ = freq;
+	  printf("LED off\n");
+//	  freq = 104500; // europaFM
+//	  REG_FREQ = freq;
 //	  if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000))
 //	  {
-//	     Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
-//	     MODF_FREQ = REG_FREQ;
+//	    Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
+//	    MODF_FREQ = REG_FREQ;
 //	  }
-	  HAL_Delay(1000);
-//	  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
-//      HAL_Delay(500);
-//      HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
-//      HAL_Delay(500);
-//     HAL_UART_Transmit(&huart2, (uint8_t *)"T88700\n", 7, HAL_MAX_DELAY); //
-	 // HAL_UART_Transmit(&huart2, (uint8_t *)start_radio, strlen (start_radio), HAL_MAX_DELAY);
-	 // HAL_Delay(1000);
+
+	  HAL_Delay(500);
   }
   /* USER CODE END 3 */
 }
@@ -212,7 +223,17 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+int _write(int file, char *ptr, int len)
 
+{
+	int DataIdx;
+    for(DataIdx = 0; DataIdx < len; DataIdx++)
+    {
+    	ITM_SendChar(*ptr++);
+    }
+
+     return len;
+}
 /* USER CODE END 4 */
 
 /**

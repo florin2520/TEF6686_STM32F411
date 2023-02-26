@@ -15,10 +15,84 @@
 #include "i2c.h"
 #include "dsp_init.h"
 
+#include "usart.h"
+
+
+char str2[30];
 //#define pgm_read_byte_near(address_short) __LPM((uint16_t)(address_short))
-#define bitRead(value, bit) (((value) >> (bit)) & 0x01)
+//#define bitRead(value, bit) (((value) >> (bit)) & 0x01)
 #define pgm_read_byte(addr) (*(const unsigned char *)(addr))
 #define pgm_read_word(addr) (*(const unsigned short *)(addr))
+
+char rdsRadioText[65];
+char rdsProgramService[9];
+uint8_t rdsAb;
+char rdsProgramType[17];
+uint8_t isRdsNewRadioText;
+
+uint16_t seekMode;
+uint16_t seekStartFrequency;
+
+
+struct RdsInfo rdsInfo;
+
+uint8_t isRDSReady;
+char programTypePrevious[17] = "                ";
+char programServicePrevious[9];
+char radioTextPrevious[65];
+
+const char* ptyLUT[51] = {
+      "      None      ",
+      "      News      ",
+      "  Information   ",
+      "     Sports     ",
+      "      Talk      ",
+      "      Rock      ",
+      "  Classic Rock  ",
+      "   Adult Hits   ",
+      "   Soft Rock    ",
+      "     Top 40     ",
+      "    Country     ",
+      "     Oldies     ",
+      "      Soft      ",
+      "   Nostalgia    ",
+      "      Jazz      ",
+      "   Classical    ",
+      "Rhythm and Blues",
+      "   Soft R & B   ",
+      "Foreign Language",
+      "Religious Music ",
+      " Religious Talk ",
+      "  Personality   ",
+      "     Public     ",
+      "    College     ",
+      " Reserved  -24- ",
+      " Reserved  -25- ",
+      " Reserved  -26- ",
+      " Reserved  -27- ",
+      " Reserved  -28- ",
+      "     Weather    ",
+      " Emergency Test ",
+      "  !!!ALERT!!!   ",
+      "Current Affairs ",
+      "   Education    ",
+      "     Drama      ",
+      "    Cultures    ",
+      "    Science     ",
+      " Varied Speech  ",
+      " Easy Listening ",
+      " Light Classics ",
+      "Serious Classics",
+      "  Other Music   ",
+      "    Finance     ",
+      "Children's Progs",
+      " Social Affairs ",
+      "    Phone In    ",
+      "Travel & Touring",
+      "Leisure & Hobby ",
+      " National Music ",
+      "   Folk Music   ",
+      "  Documentary   "};
 
 /*
   by Eustake (marsel90)
@@ -271,21 +345,30 @@ void get_RDS()
 {
   int16_t uRDS_RDS[8] = {0};
   Get_Cmd(32, 131, uRDS_RDS, 8);
+  print_serial2_message("get_RDS1");
   if ( bitRead(uRDS_RDS[0], 15) == 1 )
   {
+	//print_serial2_message("get_RDS if");
     //Serial.print('P');
+	print_serial2_message("P");
     serial_hex(uRDS_RDS[1] >> 8);
     serial_hex(uRDS_RDS[1]);
     //Serial.print('\n');
     //Serial.print('R');
+    print_serial2_message("\nR");
+
+    serial_hex(uRDS_RDS[1] >> 8);
     serial_hex(uRDS_RDS[2] >> 8);
     serial_hex(uRDS_RDS[2]);
     serial_hex(uRDS_RDS[3] >> 8);
     serial_hex(uRDS_RDS[3]);
-    serial_hex(uRDS_RDS[4] >> 8);
-    serial_hex(uRDS_RDS[4]);
+    serial_hex(uRDS_RDS[4] >> 8); /// aici este denumirea postului R A T A
+    serial_hex(uRDS_RDS[4]);      //  aici este denumirea postului R C U L
     serial_hex(uRDS_RDS[5] >> 8);
+//    sprintf(str2, "%s\n\r", (char)uRDS_RDS);
+//    HAL_UART_Transmit(&huart2, (uint8_t *)str2, strlen (str2), HAL_MAX_DELAY);
     //Serial.print('\n');
+    print_serial2_message("\n");
   }
 }
 
@@ -293,6 +376,11 @@ void serial_hex(uint8_t val)
 {
   //Serial.print((val >> 4) & 0xF, HEX);
   //Serial.print(val & 0xF, HEX);
+	//print_serial2_message_number("RDS1= ", ((val >> 4) & 0xF));
+	//print_serial2_message_number("RDS2= ", (val & 0xF));
+
+	print_serial2_message_number("RDS= ", val);
+	//print_serial2_message_number("RDS2= ", (val & 0xF));
 }
 
 void Set_AGC_tresshold(uint8_t val)
@@ -687,3 +775,198 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
+
+int bitRead(char bit, uint16_t number)
+{
+    bit = 1 << bit;
+    return(bit & number);
+}
+
+
+uint8_t readRDS()
+{
+  char status;
+  uint8_t rdsBHigh, rdsBLow, rdsCHigh, rdsCLow, rdsDHigh, isReady, rdsDLow;
+
+  uint16_t rdsStat, rdsA, rdsB, rdsC, rdsD, rdsErr;
+  //uint16_t result = devTEF668x_Radio_Get_RDS_Data(1, &rdsStat, &rdsA, &rdsB, &rdsC, &rdsD, &rdsErr);
+
+//  if (!(result && (rdsB != 0x0) && ((rdsStat & 0x8000) != 0x0) && ((rdsErr & 0x0a00) == 0x0))) {
+//    return isReady;
+//  }
+
+  rdsBHigh = (uint8_t)(rdsB >> 8);
+  rdsBLow = (uint8_t)rdsB;
+  rdsCHigh = (uint8_t)(rdsC >> 8);
+  rdsCLow = (uint8_t)rdsC;
+  rdsDHigh = (uint8_t)(rdsD >> 8);
+  rdsDLow = (uint8_t)rdsD;
+
+  uint8_t programType = ((rdsBHigh & 3) << 3) | ((rdsBLow >> 5) & 7);
+  strcpy(rdsProgramType, (programType >= 0 && programType < 32) ? ptyLUT[programType] : "    PTY ERROR   ");
+
+  uint8_t type = (rdsBHigh >> 4) & 15;
+  uint8_t version = bitRead(rdsBHigh, 4);
+
+  // Groups 0A & 0B
+  // Basic tuning and switching information only
+  if (type == 0) {
+    uint8_t address = rdsBLow & 3;
+    // Groups 0A & 0B: to extract PS segment we need blocks 1 and 3
+    if (address >= 0 && address <= 3) {
+      if (rdsDHigh != '\0') {
+        rdsProgramService[address * 2] = rdsDHigh;
+      }
+      if (rdsDLow != '\0') {
+        rdsProgramService[address * 2 + 1] = rdsDLow;
+      }
+      isReady = (address == 3) ? 1 : 0;
+    }
+    rdsFormatString(rdsProgramService, 8);
+  }
+  // Groups 2A & 2B
+  // Radio Text
+  else if (type == 2) {
+    uint16_t addressRT = rdsBLow & 15;
+    uint8_t ab = bitRead(rdsBLow, 4);
+    uint8_t cr = 0;
+    uint8_t len = 64;
+    if (version == 0) {
+      if (addressRT >= 0 && addressRT <= 15) {
+        if (rdsCHigh != 0x0D) {
+          rdsRadioText[addressRT*4] = rdsCHigh;
+        }
+        else {
+          len = addressRT * 4;
+          cr = 1;
+        }
+        if (rdsCLow != 0x0D) {
+          rdsRadioText[addressRT * 4 + 1] = rdsCLow;
+        }
+        else {
+          len = addressRT * 4 + 1;
+          cr = 1;
+        }
+        if (rdsDHigh != 0x0D) {
+          rdsRadioText[addressRT * 4 + 2] = rdsDHigh;
+        }
+        else {
+          len = addressRT * 4 + 2;
+          cr = 1;
+        }
+        if (rdsDLow != 0x0D) {
+          rdsRadioText[addressRT * 4 + 3] = rdsDLow;
+        }
+        else {
+          len = addressRT * 4 + 3;
+          cr = 1;
+        }
+      }
+    }
+    else {
+      if (addressRT >= 0 && addressRT <= 7) {
+        if (rdsDHigh != '\0') {
+          rdsRadioText[addressRT * 2] = rdsDHigh;
+        }
+        if (rdsDLow != '\0') {
+          rdsRadioText[addressRT * 2 + 1] = rdsDLow;
+        }
+      }
+    }
+    if (cr) {
+      for (uint8_t i = len; i < 64; i++) {
+        rdsRadioText[i] = ' ';
+      }
+    }
+    if (ab != rdsAb) {
+      for (uint8_t i = 0; i < 64; i++) {
+        rdsRadioText[i] = ' ';
+      }
+      rdsRadioText[64] = '\0';
+      isRdsNewRadioText = 1;
+    }
+    else {
+      isRdsNewRadioText = 0;
+    }
+    rdsAb = ab;
+    rdsFormatString(rdsRadioText, 64);
+  }
+  return isReady;
+}
+
+void getRDS(struct RdsInfo *rdsInfo)
+{
+  strcpy(rdsInfo->programType, rdsProgramType);
+  strcpy(rdsInfo->programService, rdsProgramService);
+  strcpy(rdsInfo->radioText, rdsRadioText);
+}
+
+void rdsFormatString(char* str, uint16_t length)
+{
+  for (uint16_t i = 0; i < length; i++) {
+    if ((str[i] != 0 && str[i] < 32) || str[i] > 126 ) {
+      str[i] = ' ';
+    }
+  }
+}
+
+
+
+void show_Rds() {
+  isRDSReady = readRDS();
+  getRDS(&rdsInfo);
+
+  showPTY();
+  showPS();
+  showRadioText();
+}
+
+void showPTY() {
+  if ((isRDSReady == 1) && !str_cmp(rdsInfo.programType, programTypePrevious, 16))
+  {
+    //Serial.print(rdsInfo.programType);
+    strcpy(programTypePrevious, rdsInfo.programType);
+    //Serial.println();
+    //lcd.setPosition(4, 11);
+    //lcd.print(rdsInfo.programType);
+    //lcd.print(strcpy(programTypePrevious, rdsInfo.programType));
+  }
+}
+
+void showPS() {
+  if ((isRDSReady == 1) && (strlen(rdsInfo.programService) == 8) && !str_cmp(rdsInfo.programService, programServicePrevious, 8))
+  {
+    //Serial.print("-=[ ");
+    //Serial.print(rdsInfo.programService);
+   // Serial.print(" ]=-");
+    strcpy(programServicePrevious, rdsInfo.programService);
+    //Serial.println();
+    //lcd.setPosition(4, 0);
+    //lcd.print(rdsInfo.programService);
+    //lcd.print(strcpy(programServicePrevious, rdsInfo.programService));
+  }
+}
+
+void showRadioText() {
+  if ((isRDSReady == 1) && !str_cmp(rdsInfo.radioText, radioTextPrevious, 65))
+  {
+    //Serial.print(rdsInfo.radioText);
+    strcpy(radioTextPrevious, rdsInfo.radioText);
+    //Serial.println();
+//    lcd.setPosition(3, 11);
+    //lcd.setPosition(3, 0);
+    // lcd.print(rdsInfo.radioText);
+    //lcd.print(strcpy(radioTextPrevious, rdsInfo.radioText));
+  }
+}
+
+bool str_cmp(char* str1, char* str2, int length)
+{
+  for (int i = 0; i < length; i++) {
+    if (str1[i] != str2[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+

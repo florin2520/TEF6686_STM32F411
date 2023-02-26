@@ -31,7 +31,8 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -61,12 +62,12 @@ void Error_Handler(void);
 #define LED_GPIO_Port GPIOC
 #define FREQ_SEEK_UP_Pin GPIO_PIN_14
 #define FREQ_SEEK_UP_GPIO_Port GPIOC
-#define LIGHT_SENSOR_Pin GPIO_PIN_15
-#define LIGHT_SENSOR_GPIO_Port GPIOC
-#define FREQ_SEEK_DOWN_Pin GPIO_PIN_2
-#define FREQ_SEEK_DOWN_GPIO_Port GPIOA
+#define FREQ_SEEK_DOWN_Pin GPIO_PIN_15
+#define FREQ_SEEK_DOWN_GPIO_Port GPIOC
 #define IR_SENSOR_Pin GPIO_PIN_4
 #define IR_SENSOR_GPIO_Port GPIOA
+#define LIGHT_SENSOR_Pin GPIO_PIN_0
+#define LIGHT_SENSOR_GPIO_Port GPIOB
 #define VFD_CS_Pin GPIO_PIN_12
 #define VFD_CS_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */

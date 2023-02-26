@@ -21,9 +21,11 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "i2c.h"
 #include "spi.h"
 #include "tim.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -52,7 +54,10 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-char *start_radio = "Start radio...\n\r";
+
+uint8_t contor;
+
+//char *start_radio = "Start radio...\n\r";
 char str1[30];
 char message_frequency[16];
 char message_volume[10];
@@ -67,6 +72,8 @@ extern int8_t Filter_AM;
 extern int8_t Filter_FM;
 extern int8_t current_filter;  // Current FIR filter (-1 is adaptive)
 
+
+char str[40];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -113,6 +120,8 @@ int main(void)
   MX_SPI1_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_ADC1_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Encoder_Start_IT(&htim2, TIM_CHANNEL_ALL);
   HAL_TIM_Encoder_Start_IT(&htim3, TIM_CHANNEL_ALL);
@@ -126,7 +135,12 @@ int main(void)
 
   //start radio
   setup();
-
+  //printf("Start radio\n");
+  get_RDS();
+  //char *str1 = "Start radio...\n\r";
+  //HAL_UART_Transmit(&huart2, (uint8_t *)str1, strlen (str1), HAL_MAX_DELAY);
+  print_serial2_message("Start radio...");
+  HAL_Delay(4500);
   // set volume
 //    volume = 80;
 //    Set_Cmd(48, 11, 1, 0);  //unmute
@@ -138,27 +152,31 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//     loop();
-//     HAL_UART_Transmit(&huart2, (uint8_t *)"x\n", 2, HAL_MAX_DELAY);
-//     HAL_UART_Transmit(&huart2, (uint8_t *)"Y60\n", 4, HAL_MAX_DELAY);
-//     HAL_UART_Transmit(&huart2, (uint8_t *)"M0\n", 3, HAL_MAX_DELAY);
+      contor++;
+      //print_serial2_message_number("contor = ", contor);
 
 	  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+	  get_RDS();
+	  HAL_Delay(500);
 
 //	  freq = 102900; // Oltenia
 //	  REG_FREQ = freq;
+//	  print_serial2_message_number("Frecv = ", freq);
 //	  if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000))
 //	  {
 //	    Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
 //	    MODF_FREQ = REG_FREQ;
 //	  }
 
-	  HAL_Delay(500);
 
 	  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
-
-//	  freq = 104500; // europaFM
+	  get_RDS();
+	  HAL_Delay(500);
+	  //printf("LED off\n");
+	  //freq = 104500; // europaFM
+//	  freq = 88700; //
 //	  REG_FREQ = freq;
+//	  print_serial2_message_number("Frecv = ", freq);
 //	  if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000))
 //	  {
 //	    Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
@@ -166,14 +184,7 @@ int main(void)
 //	  }
 
 
-	  HAL_Delay(500);
-//	  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
-//      HAL_Delay(500);
-//      HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
-//      HAL_Delay(500);
-//     HAL_UART_Transmit(&huart2, (uint8_t *)"T88700\n", 7, HAL_MAX_DELAY); //
-	 // HAL_UART_Transmit(&huart2, (uint8_t *)start_radio, strlen (start_radio), HAL_MAX_DELAY);
-	 // HAL_Delay(1000);
+
   }
   /* USER CODE END 3 */
 }
@@ -224,7 +235,17 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+int _write(int file, char *ptr, int len)
 
+{
+	int DataIdx;
+    for(DataIdx = 0; DataIdx < len; DataIdx++)
+    {
+    	ITM_SendChar(*ptr++);
+    }
+
+     return len;
+}
 /* USER CODE END 4 */
 
 /**

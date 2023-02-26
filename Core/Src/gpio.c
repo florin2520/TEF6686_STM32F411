@@ -64,16 +64,16 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PCPin PCPin */
-  GPIO_InitStruct.Pin = FREQ_SEEK_UP_Pin|LIGHT_SENSOR_Pin;
+  GPIO_InitStruct.Pin = FREQ_SEEK_UP_Pin|FREQ_SEEK_DOWN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PAPin PAPin */
-  GPIO_InitStruct.Pin = FREQ_SEEK_DOWN_Pin|IR_SENSOR_Pin;
+  /*Configure GPIO pin : PtPin */
+  GPIO_InitStruct.Pin = IR_SENSOR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(IR_SENSOR_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PtPin */
   GPIO_InitStruct.Pin = VFD_CS_Pin;
