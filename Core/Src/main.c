@@ -232,7 +232,6 @@ int main(void)
 		    print_serial2_message(message_frequency);
 		    clear_display();
 		    disp_freq(freq);
-
 		}
 		old_encoder_reading_f = encoder_reading_f;
 
