@@ -1,0 +1,1046 @@
+/*
+ * tef6686.c
+ *
+ *  Created on: Jan 28, 2023
+ *      Author: nicaf
+ */
+
+
+//TEF6686HN/V102 xdr-gtk控制程序
+//作者 eggplant886
+//rds add by stailus
+
+#include "tef6686.h"
+#include <stdarg.h>
+#include "i2c.h"
+#include "dsp_init.h"
+
+#include "usart.h"
+
+
+char str2[30];
+//#define pgm_read_byte_near(address_short) __LPM((uint16_t)(address_short))
+//#define bitRead(value, bit) (((value) >> (bit)) & 0x01)
+#define pgm_read_byte(addr) (*(const unsigned char *)(addr))
+#define pgm_read_word(addr) (*(const unsigned short *)(addr))
+
+char rdsRadioText[65];
+
+char rdsProgramService[9];
+
+uint8_t rdsAb;
+char rdsProgramType[17];
+
+uint8_t isRdsNewRadioText;
+
+uint16_t seekMode;
+uint16_t seekStartFrequency;
+
+uint8_t isRDSReady;
+struct RdsInfo rdsInfo;
+
+
+char programTypePrevious[17] = "                ";
+char programServicePrevious[9];
+char radioTextPrevious[65];
+
+
+
+const char* ptyLUT[51] = {
+      "      None      ",
+      "      News      ",
+      "  Information   ",
+      "     Sports     ",
+      "      Talk      ",
+      "      Rock      ",
+      "  Classic Rock  ",
+      "   Adult Hits   ",
+      "   Soft Rock    ",
+      "     Top 40     ",
+      "    Country     ",
+      "     Oldies     ",
+      "      Soft      ",
+      "   Nostalgia    ",
+      "      Jazz      ",
+      "   Classical    ",
+      "Rhythm and Blues",
+      "   Soft R & B   ",
+      "Foreign Language",
+      "Religious Music ",
+      " Religious Talk ",
+      "  Personality   ",
+      "     Public     ",
+      "    College     ",
+      " Reserved  -24- ",
+      " Reserved  -25- ",
+      " Reserved  -26- ",
+      " Reserved  -27- ",
+      " Reserved  -28- ",
+      "     Weather    ",
+      " Emergency Test ",
+      "  !!!ALERT!!!   ",
+      "Current Affairs ",
+      "   Education    ",
+      "     Drama      ",
+      "    Cultures    ",
+      "    Science     ",
+      " Varied Speech  ",
+      " Easy Listening ",
+      " Light Classics ",
+      "Serious Classics",
+      "  Other Music   ",
+      "    Finance     ",
+      "Children's Progs",
+      " Social Affairs ",
+      "    Phone In    ",
+      "Travel & Touring",
+      "Leisure & Hobby ",
+      " National Music ",
+      "   Folk Music   ",
+      "  Documentary   "};
+
+/*
+  by Eustake (marsel90)
+  With this sketch it is recommended to use together with TEF-GTK v1.1.2
+  changes:
+  Sketch compatible with NXP-TEF6686 (F8602 or F8605)
+  Add = MPX out mode ( DAC_Left : FM MPX (DARC) signal / DAC_Right : mono audio ) + MPX obtion in TEF-GTK
+  Check signal level and 19kHz subcarrier every TIMER_INTERVAL. Now in TEF-GTK appear MO for mono and ST for stereo.
+  Without IF+ and RF+ - RF Gain is 0db
+  Only RF+ - RF Gain max +6db
+  Only IF+ - RF Gain max +9db
+  Both IF+ & RF+ - RF Gain max +15db
+  ChannelEqualizer obtion - on/off use TEF-GTK button EQ
+  MphSuppression iMS obtion - on/off use TEF-GTK button iMS
+  +6dB analog radio sound gain - in TEF-GTK enable Show antenna input alignment - NO AM
+  #
+  by VoXiTPro
+  changes:
+  all warnings are removed  (unsigned int to signed int did go wrong)
+  Filters are now switchable (AUTO is max 236khz, manual you can set 311Khz)
+  Stereo on/off
+  Signal measurement improvements
+  Keep filter (to do) and frequency settings when switching from AM to FM / FM to AM
+  Settings are now from Eustake (marsel90)
+  AGC is now switchable (now for FM/AM and reversed the settings)
+  Removed some settings from Eustake, FMSI stereo improvement only for tef6687 and tef6689, Softmute_mod AM only, Wavegen and I2S audio (only using internal audio)
+  You can now change settings with the antenne switch ANT A = default settings, ANT B = Improved settings, ANT C = Eustake Settings
+  Settings are now A,B,C from eustake. D are improved settings from prog manual.
+  AGC, Deemphasis, IF+ RF+ are now in subroutines so you can set them at other moments. If you change settings the old values will be reapplied.
+  IF+ RF+ works now also for AM.
+  Squelch will change volume scale for AM.  if you have the right value change the define AM_VOL_SCALE too that value (now -1)
+*/
+/*
+ If you have changed the above value squelch will be off again.
+ Switching from AM to FM or from FM to AM filter settings are kept
+  Thanks also to:
+  - FMDXklaas for testing
+  - ODJeetje
+  - Eustake for default and improved settings
+  and many others ...
+  Tested on Arduino Nano V3.0 at 5V
+*/
+
+uint8_t buff_pos = 0;
+uint32_t REG_FREQ;
+uint32_t MODA_FREQ = 0;
+uint32_t MODF_FREQ = 0;
+uint32_t timer = 0;          // Signal level reporting timer
+uint32_t timer_RDS = 0;      // RDS reporting timer
+int8_t current_filter = -1;  // Current FIR filter (-1 is adaptive)
+int8_t current_set = -1;     // Current FIR filter (-1 is adaptive)
+int8_t forced_mono;
+int16_t LevelOffset;
+int16_t Level;
+int16_t AudioLevel;
+int16_t LevelA;
+int8_t mode;
+int8_t AGC_tress;
+int8_t IFplus;
+int8_t RFplus;
+int8_t Squelch;
+int8_t Setsquelch;
+int16_t nDeemphasis, volume;
+uint32_t freq;
+int8_t Filter_AM = 16;
+int8_t Filter_FM = 16;
+int8_t radio_mode;
+int8_t scan_mode;
+
+/* Scan */
+uint16_t scan_start = 0;
+uint16_t scan_end = 0;
+uint16_t scan_step = 0;
+uint8_t scan_filter = 0;
+uint16_t AM_start_scan = 0;
+uint16_t AM_scan_end = 0;
+uint16_t AM_scan_step = 0;
+uint8_t AM_scan_filter = 0;
+
+
+#define SERIAL_PORT_SPEED 115200
+#define SERIAL_BUFFER_SIZE 16
+char buff[SERIAL_BUFFER_SIZE];
+
+
+#define TIMER_INTERVAL 66
+#define RDS_TIMER_INTERVAL 87
+#define AM_VOL_SCALE -1
+uint8_t DSP_I2C = (0x64U<<1);
+
+/* Buffer used for transmission */
+uint8_t aTxBuffer[10];
+
+/* Size of Transmission buffer */
+#define TXBUFFERSIZE                      (COUNTOF(aTxBuffer) - 1)
+/* Size of Reception buffer */
+#define RXBUFFERSIZE                      TXBUFFERSIZE
+
+/* Exported macro ------------------------------------------------------------*/
+#define COUNTOF(__BUFFER__)   (sizeof(__BUFFER__) / sizeof(*(__BUFFER__)))
+
+
+//TODO DMA
+void Write(uint8_t *buf, uint8_t len)
+{
+  //Wire.beginTransmission(DSP_I2C);
+	HAL_I2C_Master_Transmit(&hi2c1, (uint16_t)DSP_I2C, (uint8_t*)buf, len, 1500);
+
+  //for (int i = 0; i < len; i++)
+    //Wire.write(*buf++);
+  //Wire.endTransmission();
+}
+
+//TODO DMA
+void Read(uint8_t *buf, uint8_t len)
+{
+  //uint8_t lenrec = Wire.requestFrom(DSP_I2C, len);
+	HAL_I2C_Master_Receive(&hi2c1, (uint16_t)DSP_I2C, (uint8_t *)buf, len, 1500);
+  //for (int i = 0; i < lenrec; i++)
+    //*buf++ = Wire.read();
+}
+
+
+
+void Set_Cmd(uint8_t mdl, uint8_t cmd, int len, ...)
+{
+  uint8_t buf[31];
+  //uint16_t temp;
+  uint32_t temp;
+  va_list vArgs;
+  va_start(vArgs, len);
+  buf[0] = mdl;
+  buf[1] = cmd;
+  buf[2] = 1;
+  for (uint8_t i = 0; i < len; i++)
+  {
+    //temp = va_arg(vArgs, uint16_t);
+	//temp = va_arg(vArgs, int);
+	temp = va_arg(vArgs, uint32_t);
+    buf[3 + i * 2] = (uint8_t)(temp >> 8);
+    buf[4 + i * 2] = (uint8_t)temp;
+  }
+  va_end(vArgs);
+  Write(buf, len * 2 + 3);
+}
+
+void Get_Cmd(uint8_t mdl, uint8_t cmd, int16_t *receive, int len)
+{
+  uint8_t buf[3];
+  buf[0] = mdl;
+  buf[1] = cmd;
+  buf[2] = 1;
+  Write(buf, 3);
+  Read((uint8_t*)receive, 2 * len);
+  for (uint8_t i = 0; i < len; i++)
+  {
+    uint16_t newval = (uint8_t)(receive[i] >> 8) | (((uint8_t)(receive[i])) << 8);
+    receive[i] = newval;
+  }
+}
+
+void dsp_write_data(const uint8_t* data)
+{
+  uint8_t *pa = (uint8_t *)data;
+  uint8_t len, first;
+  uint8_t data_to_send[45];
+  for (;;)
+  {
+	  len = pgm_read_byte(pa++);
+//	  if (len == 45)  // ???
+//	     break;
+	  first = pgm_read_byte(pa);
+    if (!len)
+      break;
+
+    if (len == 2 && first == 0xff)
+    {
+      int delaytime = pgm_read_byte(++pa);
+      HAL_Delay(delaytime);
+      pa++;
+    }
+    else
+    {
+      for (int i = 0; i < len; i++)
+      {
+    	  data_to_send[i] = pgm_read_byte(pa++);
+      }
+	  HAL_I2C_Master_Transmit(&hi2c1, (uint16_t)DSP_I2C, data_to_send, len, 1500);
+	  memset(data_to_send, '\0', 45);
+    }
+  }
+}
+
+//void scan(bool continous)
+//{
+//  uint32_t freq;
+//  uint32_t buffer;
+//
+//  if ( scan_start < 6500 )
+//  {
+//    scan_mode = 1;
+//    scan_start = AM_start_scan;
+//    scan_end = AM_scan_end;
+//    scan_step = AM_scan_step;
+//  }
+//  else
+//  {
+//    scan_mode = 0;
+//  }
+//
+//  if (scan_mode == 0)
+//  {
+//  Set_Cmd(32, 1, 2, 1, scan_start);
+//  }
+//  else
+//  {
+//    Set_Cmd(33, 10, 2, scan_filter == -1 ? 1 : 0, pgm_read_byte_near(AMFilterMap + scan_filter));
+//    Set_Cmd(33, 1, 2, 1, scan_start);
+//  }
+//  do
+//  {
+//    //Serial.print('U');
+//    for (freq = scan_start; freq <= scan_end; freq += scan_step)
+//    {
+//      Set_Cmd( scan_mode == 0 ? 32 : 33, 1, 2, 1, freq);
+//      //Serial.print(scan_mode == 0 ? freq * 10 : freq, DEC);
+//      //Serial.print('=');
+//      delay(10);
+//
+//      int16_t uQuality[4] = { 0 };
+//      Get_Cmd(scan_mode == 0 ? 32 : 33, 128, uQuality, 4);
+//      //Serial.print(uQuality[1] / 10, DEC);
+//      //Serial.print(',');
+//    }
+//
+//    //Serial.print('\n');
+//  } while (continous && !Serial.available());
+//  if (radio_mode == 0)
+//  {
+//    Set_Cmd( 32, 1, 2, 1, REG_FREQ / 10 );
+//  }
+//  else
+//  {
+//    Set_Cmd( 33, 10, 2, 0, pgm_read_byte_near(AMFilterMap + current_filter));
+//    Set_Cmd( 33, 1, 2, 1, REG_FREQ );
+//  }
+//}
+
+//void get_RDS()
+//{
+//  int16_t uRDS_RDS[8] = {0};
+//  Get_Cmd(32, 131, uRDS_RDS, 8);
+//  print_serial2_message("get_RDS1");
+//  if ( bitRead(uRDS_RDS[0], 15) == 1 )
+//  {
+//	//print_serial2_message("get_RDS if");
+//    //Serial.print('P');
+//	print_serial2_message("P");
+//    serial_hex(uRDS_RDS[1] >> 8);
+//    serial_hex(uRDS_RDS[1]);
+//    //Serial.print('\n');
+//    //Serial.print('R');
+//    print_serial2_message("\nR");
+//
+//    serial_hex(uRDS_RDS[1] >> 8);
+//    serial_hex(uRDS_RDS[2] >> 8);
+//    serial_hex(uRDS_RDS[2]);
+//    serial_hex(uRDS_RDS[3] >> 8);
+//    serial_hex(uRDS_RDS[3]);
+//    serial_hex(uRDS_RDS[4] >> 8); /// aici este denumirea postului R A T A
+//    serial_hex(uRDS_RDS[4]);      //  aici este denumirea postului R C U L
+//    serial_hex(uRDS_RDS[5] >> 8);
+////    sprintf(str2, "%s\n\r", (char)uRDS_RDS);
+////    HAL_UART_Transmit(&huart2, (uint8_t *)str2, strlen (str2), HAL_MAX_DELAY);
+//    //Serial.print('\n');
+//    print_serial2_message("\n");
+//  }
+//}
+
+void serial_hex(uint8_t val)
+{
+  //Serial.print((val >> 4) & 0xF, HEX);
+  //Serial.print(val & 0xF, HEX);
+	//print_serial2_message_number("RDS1= ", ((val >> 4) & 0xF));
+	//print_serial2_message_number("RDS2= ", (val & 0xF));
+
+	print_serial2_message_number("RDS= ", val);
+	//print_serial2_message_number("RDS2= ", (val & 0xF));
+}
+
+void Set_AGC_tresshold(uint8_t val)
+{
+ if (val == 0) {
+  Set_Cmd(32, 11, 2, 920, 0);
+  Set_Cmd(33, 11, 1, 1020);
+ } else if (val == 1) {
+  Set_Cmd(32, 11, 2, 890, 0);
+  Set_Cmd(33, 11, 1, 990);
+ } else if (val == 2) {
+  Set_Cmd(32, 11, 2, 870, 0);
+  Set_Cmd(33, 11, 1, 970);
+ } else {
+  Set_Cmd(32, 11, 2, 840, 0);
+  Set_Cmd(33, 11, 1, 940);
+ }
+}
+
+void Set_IF_RF(uint8_t val, uint8_t val1)
+{
+  if (val == 1 && val1 == 0) {
+     Set_Cmd(32, 39, 1, 60);
+     Set_Cmd(33, 39, 1, 60);
+  } else if (val == 0 && val1 == 1) {
+     Set_Cmd(32, 39, 1, 90);
+     Set_Cmd(33, 39, 1, 60);
+  } else if (val == 1 && val1 == 1) {
+     Set_Cmd(32, 39, 1, 150);
+     Set_Cmd(33, 39, 1, 120);
+  } else {
+     Set_Cmd(32, 39, 1, 0);
+     Set_Cmd(33, 39, 1, 0);
+  }
+}
+
+void Set_Deempasis(uint8_t val)
+{
+  if (val == 0) {
+    Set_Cmd(32, 31, 1, 500); //50 us
+    Set_Cmd(32, 85, 1, 0);
+  } else  if (val == 1) {
+    Set_Cmd(32, 31, 1, 750); //75 us
+    Set_Cmd(32, 85, 1, 0);
+  } else if (val == 2) {
+    Set_Cmd(32, 31, 1, 0);  //0 us
+    Set_Cmd(32, 85, 1, 0);
+  } else if (val == 3) {
+    Set_Cmd(32, 85, 1, 1); //MPX out mode ( DAC_Left : FM MPX (DARC) signal / DAC_Right : mono audio );
+  }
+}
+
+void setup()
+{
+  //Wire.begin();
+  //Serial.begin(115200);
+  //delay(40);
+  HAL_Delay(50);
+  int16_t uState;
+  Get_Cmd(64, 128, &uState, 1);
+  if (uState < 2)
+    dsp_write_data(DSP_INIT);
+  else if (uState > 2)
+  {
+    Set_Cmd(64, 1, 1, 1);
+  }
+
+  HAL_Delay(20); //TODO pe analizor nu apare ??
+//  if (AM_VOL_SCALE != -1)
+//  {
+//    int SetVolScale = map(AM_VOL_SCALE, 0, 100, -120, 60);
+//    Set_Cmd(33, 80, 1, SetVolScale);
+//  }
+//
+
+  // set volume
+    volume = 100;
+    Set_Cmd(48, 11, 1, 0);  //unmute
+    int Setvolume = map(volume, 0, 100, -599, 50);
+    Set_Cmd(48, 10, 1, Setvolume);
+
+  // set freq
+    MODF_FREQ = 104500;
+    //MODF_FREQ = 88700;
+    //MODF_FREQ = 103600;
+    //MODF_FREQ = 98000;
+    //MODF_FREQ = 90600;
+    Set_Cmd(32, 1, 2, 1, MODF_FREQ / 10);
+
+    if (Filter_FM == 16) {Filter_FM = -1;}
+    current_filter = Filter_FM;
+    //Set_Cmd(32, 10, 4, current_filter == -1 ? 1 : 0, pgm_read_word_near(FMFilterMap + current_filter), 1000, 1000);
+    Set_Cmd(32, 10, 4, current_filter == -1 ? 1 : 0, pgm_read_word(FMFilterMap + current_filter), 1000, 1000);
+}
+
+//void loop()
+//{
+//  // check signal level and 19kHz subcarrier every TIMER_INTERVAL
+////  if ((millis() - timer) >= TIMER_INTERVAL)
+////  {
+////    if (radio_mode == 0) {
+////      Serial.print('S');
+////      uint16_t uStatus;
+////      Get_Cmd(32, 133, &uStatus, 1);
+////      char stereo ;
+////        if(!forced_mono)
+////          stereo = (uStatus & (1 << 15)) ? 's' : 'm';
+////        else
+////          stereo = (uStatus & (1 << 15)) ? 'S' : 'M';
+////        Serial.print(stereo);
+////      int16_t uQuality[4] = { 0 };
+////      if (radio_mode == 0){
+////      Get_Cmd(32, 128, uQuality, 6);}
+////      if (uQuality[1] > 1200){uQuality[1] = 1200;}
+////      Serial.print(uQuality[1] / 10, DEC);
+////      Serial.print(',');
+////      if ((uQuality[2] > 1000) && (radio_mode ==0)) {uQuality[2] = 1000;}
+////      Serial.print(uQuality[2] / 10, DEC);
+////      Serial.print(',');
+////      Serial.print(uQuality[3] / 10, DEC);
+////      Serial.print('\n');
+////      timer = millis();
+////     }
+////     else if (radio_mode == 1) {
+////      Serial.print("Sm");
+////      int16_t uQuality[4] = { 0 };
+////      Get_Cmd(33, 128, uQuality, 4);
+////      Serial.print(uQuality[1] / 10, DEC);
+////      Serial.print(',');
+////      if (radio_mode ==1){uQuality[2] = uQuality[2] / 5;}
+////      Serial.print(uQuality[2] / 10, DEC);
+////      Serial.print(',');
+////      Serial.print(uQuality[3] / 10, DEC);
+////      Serial.print('\n');
+////      timer = millis();
+////    }
+////  }
+//
+////  if (radio_mode == 0) {
+////    if ((millis() - timer_RDS) >= RDS_TIMER_INTERVAL)
+////    {
+////      get_RDS();
+////      timer_RDS = millis();
+////    }
+////  }
+//
+//  if (Serial.available() > 0)
+//  {
+//    buff[buff_pos] = Serial.read();
+//    if (buff[buff_pos] != '\n' && buff_pos != SERIAL_BUFFER_SIZE - 1)
+//      buff_pos++;
+//    else {
+//      buff[buff_pos] = 0x00;
+//      buff_pos = 0;
+//
+//      switch (buff[0])
+//      {
+//
+//        case 'x':
+//          Serial.println("OK");
+//          break;
+//
+//        case 'Y':  // Audio volume scaler
+//          volume = atoi(buff + 1);
+//          if (volume == 0) {
+//            Set_Cmd(48, 11, 1, 1);  //mute
+//          } else {
+//            Set_Cmd(48, 11, 1, 0);  //unmute
+//            int Setvolume = map(volume, 0, 100, -599, 50);
+//            Set_Cmd(48, 10, 1, Setvolume);
+//          }
+//         // Serial.print("Y");
+//          //Serial.println(volume);
+//          break;
+//
+//        case 'S':
+//          if (buff[1] == 'a')
+//          {
+//            scan_start = (atol(buff + 2) + 5) / 10;
+//            AM_start_scan = atol(buff + 2);
+//          }
+//          else if (buff[1] == 'b')
+//          {
+//            scan_end = (atol(buff + 2) + 5) / 10;
+//            AM_scan_end = atol(buff + 2);
+//          }
+//          else if (buff[1] == 'c')
+//          {
+//            scan_step = (atol(buff + 2) + 5) / 10;
+//            AM_scan_step = atol(buff + 2);
+//          }
+//          else if (buff[1] == 'f')
+//          {
+//            scan_filter = atol(buff + 2);
+//          }
+//          else if (scan_start > 0 && scan_end > 0 && scan_step > 0 && scan_filter >= 0)
+//          {
+//            if (buff[1] == 'm')
+//              scan(true);   // Multiple (continous) scan
+//            else
+//              scan(false);  // Single scan
+//          }
+//          break;
+//
+//        case 'B':
+//          forced_mono = atol(buff + 1);
+//          if(forced_mono == 1)
+//          Set_Cmd(32, 66, 1, 2, forced_mono == 1 ? 2 : 0 , 60);
+//          else
+//          Set_Cmd(32, 66, 1, 0, forced_mono == 1 ? 2 : 0 , 200);
+//          //Serial.print('B');
+//          //Serial.print(forced_mono ? '1' : '0');
+//          //Serial.print('\n');
+//          break;
+//        case 'N':
+//          break;
+//
+//        case 'M':
+//          mode = atol(buff + 1);
+//          if (mode == 0){
+//            if (MODF_FREQ == 0){MODF_FREQ = 87500;}
+//            Set_Cmd(32, 1, 2, 1, MODF_FREQ / 10);
+//            //Serial.println("M0");
+//            //Serial.print('T');
+//            //Serial.println(MODF_FREQ);
+//            if (Filter_AM != 16) {Filter_AM = current_filter;}
+//			      if (Filter_FM == 16) {Filter_FM = -1;}
+//			      current_filter = Filter_FM;
+//            Set_Cmd(32, 10, 4, current_filter == -1 ? 1 : 0, pgm_read_word_near(FMFilterMap + current_filter), 1000, 1000);
+//            radio_mode = 0;
+//          } else {
+//            if (MODA_FREQ == 0){MODA_FREQ = 558;}
+//            Set_Cmd(33, 1, 2, 1, MODA_FREQ);
+//            //Serial.println("M1");
+//            //Serial.print('T');
+//            //Serial.println(MODA_FREQ);
+//			      Filter_FM = current_filter;
+//	          if (Filter_FM != 16) {Filter_FM = current_filter;}
+//   	        if (Filter_AM == 16) {Filter_AM = 1;}
+//            current_filter = Filter_AM;
+//            Set_Cmd(33, 10, 2, 0, pgm_read_byte_near(AMFilterMap + current_filter));
+//            radio_mode = 1;
+//          }
+//          //Serial.print('F');
+//          //Serial.println(current_filter);
+//          //Serial.print('V');
+//          //Serial.println(LevelOffset);
+//          break;
+//
+//         case 'T':  // Tune to a frequency (to do keep filter settings)
+//          freq = atol(buff + 1);
+//          REG_FREQ = freq;
+//          if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000)) {
+//            Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
+//            Serial.println("M0");
+//            Serial.print('T');
+//            Serial.println(REG_FREQ);
+//            if (radio_mode == 1) {                         // from AM to FM then switch to adaptive filter AUTO in TEF-GTK
+//              if (Filter_AM != 16) {Filter_AM = current_filter;}
+//             if (Filter_FM == 16) {Filter_FM = -1;}
+//              current_filter = Filter_FM;
+//              Set_Cmd(32, 10, 4, current_filter == -1 ? 1 : 0, pgm_read_word_near(FMFilterMap + current_filter), 1000, 1000);
+//            }
+//            radio_mode = 0;
+//            MODF_FREQ = REG_FREQ;
+//          } else if ((REG_FREQ >= 144) && (REG_FREQ <= 26999)) {
+//              Set_Cmd(33, 1, 2, 1, REG_FREQ);
+//              //Serial.println("M1");
+//              //Serial.print('T');
+//              //Serial.println(REG_FREQ);
+//              if (radio_mode == 0) {                       // from FM to AM then use filter 1 -> 4khz
+//                if (Filter_FM != 16) {Filter_FM = current_filter;}
+//                if (Filter_AM == 16) {Filter_AM = 1;}
+//                current_filter = Filter_AM;
+//                Set_Cmd(33, 10, 2, 0, pgm_read_byte_near(AMFilterMap + current_filter));
+//              }
+//              radio_mode = 1;
+//              MODA_FREQ = REG_FREQ;
+//          }
+//          //Serial.print('F');
+//          //Serial.println(current_filter);
+//          //Serial.print('V');
+//          //Serial.println(LevelOffset);
+//          break;
+//
+//        case 'F':  // Change FIR filters
+//          current_filter = atoi(buff + 1);
+//          if (radio_mode == 0) {
+//            Set_Cmd(32, 10, 4, current_filter == -1 ? 1 : 0, pgm_read_word_near(FMFilterMap + current_filter), 1000, 1000);
+//          }
+//          else {
+//            Set_Cmd(33, 10, 2, 0, pgm_read_byte_near(AMFilterMap + current_filter));
+//          }
+//          //Serial.print('F');
+//          //Serial.println(buff + 1);
+//          break;
+//
+//        case 'V':
+//          LevelOffset = atoi(buff + 1);
+//          Level = map(LevelOffset, 0, 127, 0, 360);
+//          if (radio_mode == 1) {Set_Cmd(33, 12, 1, Level);} // Set AM LNA (in TEF-GTK enable Show antenna input alignment - NO FM)
+//          else
+//          AudioLevel = atoi(buff + 1);
+//          LevelA = map(AudioLevel, 0, 127, 0, 60);
+//          if (radio_mode == 0) {Set_Cmd(32, 80, 1, LevelA);}  // Set +6dB analog radio sound gain (in TEF-GTK enable Show antenna input alignment - NO AM)
+//          //Serial.print('V');
+//          //Serial.println(buff + 1);
+//          break;
+//
+//        case 'Q':  // Audio volume scaler
+//          Squelch = atoi(buff + 1);
+//          if (Squelch != -1 && AM_VOL_SCALE == -1) {
+//            int Setsquelch = map(Squelch, 0, 100, -120, 60);
+//            Set_Cmd(33, 80, 1, Setsquelch);
+//            //Serial.print("Q");
+//            //Serial.println(Squelch);
+//          }
+//          break;
+//
+//        case 'D':  // Change the de-emphasis
+//          nDeemphasis = atoi(buff + 1);
+//          //Serial.print("D");
+//          Set_Deempasis(nDeemphasis);
+//          //Serial.println(nDeemphasis);
+//          break;
+//
+//        case 'G':
+//          //Serial.print('G');
+//          RFplus = buff[1] - 48;
+//          IFplus = buff[2] - 48;
+//          Set_IF_RF(RFplus,IFplus);
+//          //Serial.print(RFplus);
+//          //Serial.println(IFplus);
+//          break;
+//
+//        case 'A':  // AGC  (check what levelstepping does)
+//          //Serial.print('A');
+//          AGC_tress = atoi(buff + 1);
+//          Set_AGC_tresshold(AGC_tress);
+//          //Serial.println(AGC_tress);
+//          break;
+//
+//       case 'C':
+//         //Serial.print('C');
+//         if (buff[1] == '0' ) {
+//         Set_Cmd(32, 22, 1, 1);  //ChannelEqualizer (EQ 1)
+//         Set_Cmd(32, 20, 1, 1);  //MphSuppression (iMS 1)
+//         //Serial.print("0");
+//         } else if (buff[1] == '1' ) {
+//          Set_Cmd(32, 22, 1, 0); //ChannelEqualizer (EQ 0)
+//          //Serial.print("1");
+//         }else if (buff[1] == '2' ) {
+//          Set_Cmd(32, 20, 1, 0);  //MphSuppression (iMS 0)
+//         //Serial.print("2");
+//         }
+//         //Serial.print('\n');
+//         break;
+//
+//        case 'Z':
+//          //Serial.print('Z');
+//          if (buff[1] == '0') {
+//              dsp_write_data(INIT_SET1);
+//            //Serial.print("0");
+//          } else if (buff[1] == '1') {
+//              dsp_write_data(INIT_SET2);
+//            //Serial.print("1");
+//          } else if (buff[1] == '2') {
+//              dsp_write_data(INIT_SET3);
+//            //Serial.print("2");
+//          } else if (buff[1] == '3') {
+//              dsp_write_data(INIT_SET4);
+//            //Serial.print("3");
+//          } else {
+//            //Serial.print("4");
+//          }
+//          //Serial.print('\n');
+//          Set_AGC_tresshold(AGC_tress);
+//          Set_IF_RF(RFplus,IFplus);
+//          Set_Deempasis(nDeemphasis);
+//          break;
+//
+//        case 'X':  // shutdown
+//          Set_Cmd(64, 1, 1, 1);
+//          //TWCR = 0;  // Release SDA and SCL lines used by hardware I2C
+//          //Serial.println("X");
+//          //delay(10);
+//          HAL_Delay(10);
+//          //asm("jmp 0");
+//          break;
+//      }
+//    }
+//  }
+//}
+
+long map(long x, long in_min, long in_max, long out_min, long out_max)
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+int bitRead(char bit, uint16_t number)
+{
+    bit = 1 << bit;
+    return(bit & number);
+}
+
+uint8_t readRDS()
+{
+	/* uRDS_RDS[0] = status
+	 * uRDS_RDS[1] = A_block
+	 * uRDS_RDS[2] = B_block
+	 * uRDS_RDS[3] = C_block
+	 * uRDS_RDS[4] = D_block
+	 * uRDS_RDS[5] = dec_error error code (determined by decoder)
+	 *
+	 *
+	 * */
+
+	int16_t uRDS_RDS[8] = {0};
+	//uint16_t uRDS_RDS[8] = {0};
+	Get_Cmd(32, 131, uRDS_RDS, 8);
+//
+//	  if ( bitRead(uRDS_RDS[0], 15) == 1 )
+//	  {
+//	    //Serial.print('P');
+//		print_serial2_message("P");
+//	    serial_hex(uRDS_RDS[1] >> 8);
+//	    serial_hex(uRDS_RDS[1]);
+//	    //Serial.print('\n');
+//	    //Serial.print('R');
+//
+//	    serial_hex(uRDS_RDS[1] >> 8);
+//	    serial_hex(uRDS_RDS[2] >> 8);
+//	    serial_hex(uRDS_RDS[2]);
+//	    serial_hex(uRDS_RDS[3] >> 8);
+//	    serial_hex(uRDS_RDS[3]);
+//	    serial_hex(uRDS_RDS[4] >> 8); /// aici este denumirea postului R A T A
+//	    serial_hex(uRDS_RDS[4]);      //  aici este denumirea postului R C U L
+//	    serial_hex(uRDS_RDS[5] >> 8);
+//	    //Serial.print('\n');
+//	  }
+
+  //char status;
+  uint8_t rdsBHigh, rdsBLow, rdsCHigh, rdsCLow, rdsDHigh, isReady = 0, rdsDLow;
+
+  uint16_t rdsStat, rdsA, rdsB, rdsC, rdsD, rdsErr;
+
+  rdsStat = uRDS_RDS[0];
+  rdsA = uRDS_RDS[1];
+  rdsB = uRDS_RDS[2];
+  rdsC = uRDS_RDS[3];
+  rdsD = uRDS_RDS[4];
+  rdsErr = uRDS_RDS[5];
+  //uint16_t result = devTEF668x_Radio_Get_RDS_Data(1, &rdsStat, &rdsA, &rdsB, &rdsC, &rdsD, &rdsErr);
+
+//  if (!(result && (rdsB != 0x0) && ((rdsStat & 0x8000) != 0x0) && ((rdsErr & 0x0a00) == 0x0)))
+//  {
+//    return isReady;
+//  }
+
+    if (!((rdsStat & 0x8000) != 0x0) && ((rdsErr & 0x0a00) == 0x0))
+    {
+    	return isReady;
+    }
+
+  rdsBHigh = (uint8_t)(rdsB >> 8);
+  rdsBLow = (uint8_t)rdsB;
+  rdsCHigh = (uint8_t)(rdsC >> 8);
+  rdsCLow = (uint8_t)rdsC;
+  rdsDHigh = (uint8_t)(rdsD >> 8);
+  rdsDLow = (uint8_t)rdsD;
+
+  uint8_t programType = ((rdsBHigh & 3) << 3) | ((rdsBLow >> 5) & 7);
+  strcpy(rdsProgramType, (programType >= 0 && programType < 32) ? ptyLUT[programType] : "    PTY ERROR   ");
+
+  uint8_t type = (rdsBHigh >> 4) & 15;
+  uint8_t version = bitRead(rdsBHigh, 4);
+
+  // Groups 0A & 0B
+  // Basic tuning and switching information only
+  if (type == 0) {
+    uint8_t address = rdsBLow & 3;
+    // Groups 0A & 0B: to extract PS segment we need blocks 1 and 3
+    if (address >= 0 && address <= 3) {
+      if (rdsDHigh != '\0') {
+        rdsProgramService[address * 2] = rdsDHigh;
+      }
+      if (rdsDLow != '\0') {
+        rdsProgramService[address * 2 + 1] = rdsDLow;
+      }
+      isReady = (address == 3) ? 1 : 0;
+    }
+    rdsFormatString(rdsProgramService, 8);
+  }
+  // Groups 2A & 2B
+  // Radio Text
+  else if (type == 2) {
+    uint16_t addressRT = rdsBLow & 15;
+    uint8_t ab = bitRead(rdsBLow, 4);
+    uint8_t cr = 0;
+    uint8_t len = 64;
+    if (version == 0) {
+      if (addressRT >= 0 && addressRT <= 15) {
+        if (rdsCHigh != 0x0D) {
+          rdsRadioText[addressRT*4] = rdsCHigh;
+        }
+        else {
+          len = addressRT * 4;
+          cr = 1;
+        }
+        if (rdsCLow != 0x0D) {
+          rdsRadioText[addressRT * 4 + 1] = rdsCLow;
+        }
+        else {
+          len = addressRT * 4 + 1;
+          cr = 1;
+        }
+        if (rdsDHigh != 0x0D) {
+          rdsRadioText[addressRT * 4 + 2] = rdsDHigh;
+        }
+        else {
+          len = addressRT * 4 + 2;
+          cr = 1;
+        }
+        if (rdsDLow != 0x0D) {
+          rdsRadioText[addressRT * 4 + 3] = rdsDLow;
+        }
+        else {
+          len = addressRT * 4 + 3;
+          cr = 1;
+        }
+      }
+    }
+    else {
+      if (addressRT >= 0 && addressRT <= 7) {
+        if (rdsDHigh != '\0') {
+          rdsRadioText[addressRT * 2] = rdsDHigh;
+        }
+        if (rdsDLow != '\0') {
+          rdsRadioText[addressRT * 2 + 1] = rdsDLow;
+        }
+      }
+    }
+    if (cr) {
+      for (uint8_t i = len; i < 64; i++) {
+        rdsRadioText[i] = ' ';
+      }
+    }
+    if (ab != rdsAb) {
+      for (uint8_t i = 0; i < 64; i++) {
+        rdsRadioText[i] = ' ';
+      }
+      rdsRadioText[64] = '\0';
+      isRdsNewRadioText = 1;
+    }
+    else {
+      isRdsNewRadioText = 0;
+    }
+    rdsAb = ab;
+    rdsFormatString(rdsRadioText, 64);
+  }
+  return isReady;
+}
+
+void getRDS(struct RdsInfo *rdsInfo)
+{
+  strcpy(rdsInfo->programType, rdsProgramType);
+  strcpy(rdsInfo->programService, rdsProgramService);
+  strcpy(rdsInfo->radioText, rdsRadioText);
+}
+
+void rdsFormatString(char* str, uint16_t length)
+{
+  for (uint16_t i = 0; i < length; i++) {
+    if ((str[i] != 0 && str[i] < 32) || str[i] > 126 ) {
+      str[i] = ' ';
+    }
+  }
+}
+
+
+//
+//void show_Rds()
+//{
+//  isRDSReady = readRDS();
+//  getRDS(&rdsInfo);
+//
+//  showPTY();
+//  showPS();
+//  showRadioText();
+//}
+
+void showPTY()
+{
+  //if ((isRDSReady == 1) && !str_cmp(rdsInfo.programType, programTypePrevious, 16))
+  {
+    //Serial.print(rdsInfo.programType);
+    strcpy(programTypePrevious, rdsInfo.programType);
+    print_serial1_message("PTY: ");
+    print_serial2_message(programTypePrevious);
+    //Serial.println();
+    //lcd.setPosition(4, 11);
+    //lcd.print(rdsInfo.programType);
+    //lcd.print(strcpy(programTypePrevious, rdsInfo.programType));
+  }
+}
+
+void showPS()
+{
+  //if ((isRDSReady == 1) && (strlen(rdsInfo.programService) == 8) && !str_cmp(rdsInfo.programService, programServicePrevious, 8))
+  {
+    //Serial.print("-=[ ");
+    //Serial.print(rdsInfo.programService);
+   // Serial.print(" ]=-");
+    strcpy(programServicePrevious, rdsInfo.programService);
+    print_serial1_message("PS : ");
+    print_serial2_message(programServicePrevious);
+    //Serial.println();
+    //lcd.setPosition(4, 0);
+    //lcd.print(rdsInfo.programService);
+    //lcd.print(strcpy(programServicePrevious, rdsInfo.programService));
+  }
+}
+
+void showRadioText()
+{
+  //if ((isRDSReady == 1) && !str_cmp(rdsInfo.radioText, radioTextPrevious, 65))
+  {
+    //Serial.print(rdsInfo.radioText);
+    strcpy(radioTextPrevious, rdsInfo.radioText);
+    print_serial1_message("RDS: ");
+    print_serial2_message(radioTextPrevious);
+    //Serial.println();
+//    lcd.setPosition(3, 11);
+    //lcd.setPosition(3, 0);
+    // lcd.print(rdsInfo.radioText);
+    //lcd.print(strcpy(radioTextPrevious, rdsInfo.radioText));
+  }
+}
+
+bool str_cmp(char* str1, char* str2, int length)
+{
+  for (int i = 0; i < length; i++) {
+    if (str1[i] != str2[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void clear_rds_buffers(char* str1, uint8_t length)
+{
+	  for (int i = 0; i < length; i++)
+	  {
+        str1[i] = ' ';
+	  }
+
+}
+
