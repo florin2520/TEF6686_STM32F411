@@ -31,7 +31,8 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -57,18 +58,29 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define LED_Pin GPIO_PIN_13
-#define LED_GPIO_Port GPIOC
+#define HCMS_CE_LED_Pin GPIO_PIN_13
+#define HCMS_CE_LED_GPIO_Port GPIOC
 #define FREQ_SEEK_UP_Pin GPIO_PIN_14
 #define FREQ_SEEK_UP_GPIO_Port GPIOC
 #define FREQ_SEEK_DOWN_Pin GPIO_PIN_15
 #define FREQ_SEEK_DOWN_GPIO_Port GPIOC
-#define IR_SENSOR_Pin GPIO_PIN_4
-#define IR_SENSOR_GPIO_Port GPIOA
+#define FLASH_CS_Pin GPIO_PIN_4
+#define FLASH_CS_GPIO_Port GPIOA
 #define LIGHT_SENSOR_Pin GPIO_PIN_0
 #define LIGHT_SENSOR_GPIO_Port GPIOB
+#define IR_SENSOR_Pin GPIO_PIN_1
+#define IR_SENSOR_GPIO_Port GPIOB
+#define PAJ7620_INT_Pin GPIO_PIN_2
+#define PAJ7620_INT_GPIO_Port GPIOB
 #define VFD_CS_Pin GPIO_PIN_12
 #define VFD_CS_GPIO_Port GPIOB
+#define HCMS_RS_Pin GPIO_PIN_13
+#define HCMS_RS_GPIO_Port GPIOB
+#define HCMS_BLANK_Pin GPIO_PIN_14
+#define HCMS_BLANK_GPIO_Port GPIOB
+#define HCMS_RESET_Pin GPIO_PIN_15
+#define HCMS_RESET_GPIO_Port GPIOB
+
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

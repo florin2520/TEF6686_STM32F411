@@ -63,7 +63,8 @@ extern struct RdsInfo rdsInfo;
 extern uint8_t isRDSReady;
 uint32_t contor;
 
-
+volatile bool seek_up;
+volatile bool seek_down;
 //char *start_radio = "Start radio...\n\r";
 char str1[30];
 char message_frequency[26];
@@ -115,6 +116,7 @@ void disp_freq(uint32_t freq);
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -144,6 +146,7 @@ int main(void)
   MX_TIM3_Init();
   MX_ADC1_Init();
   MX_USART2_UART_Init();
+  MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Encoder_Start_IT(&htim2, TIM_CHANNEL_ALL);  // volum
   HAL_TIM_Encoder_Start_IT(&htim3, TIM_CHANNEL_ALL);  // frecventa
@@ -153,7 +156,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   //sprintf(str1, "Freq = %i.%i Mhz\n\r", freq_1, freq_2);
 
-  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin, GPIO_PIN_RESET);
 
   //start radio
   setup();
@@ -163,7 +166,7 @@ int main(void)
   //HAL_UART_Transmit(&huart2, (uint8_t *)str1, strlen (str1), HAL_MAX_DELAY);
   print_serial2_message("Start radio...");
   HAL_Delay(500);
-  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin, GPIO_PIN_SET);
 
     begin_disp(DISPLAY_ADDRESS);  // pass in the address
     //clear_entire_display();
@@ -194,7 +197,34 @@ int main(void)
       //print_serial2_message_number("contor = ", contor);
 
 
-        //HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+      // IF Button seek up Is Pressed
+      if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_14) == 0)  // seek up
+      {
+    	    clear_display();
+    	   	writeDigitAscii(0, 'S', false);
+    	    writeDigitAscii(1, 'E', false);
+    	    writeDigitAscii(2, 'E', false);
+    	    writeDigitAscii(3, 'K', false);
+    	    writeDigitAscii(4, ' ', false);
+    	    writeDigitAscii(5, 'U', false);
+    	    writeDigitAscii(6, 'P', false);
+    	    writeDisplay(DISPLAY_ADDRESS);
+      }
+      // IF Button seek down Is Pressed
+      if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_15) == 0)  // seek down
+      {
+			clear_display();
+			writeDigitAscii(0, 'S', false);
+			writeDigitAscii(1, 'E', false);
+			writeDigitAscii(2, 'E', false);
+			writeDigitAscii(3, 'K', false);
+			writeDigitAscii(4, ' ', false);
+			writeDigitAscii(5, 'D', false);
+			writeDigitAscii(6, 'O', false);
+			writeDigitAscii(7, 'W', false);
+			writeDisplay(DISPLAY_ADDRESS);
+      }
+
 		encoder_reading_v = (TIM2->CNT>>1) + 30;
 		if (encoder_reading_v < 30)
 		{
@@ -255,18 +285,18 @@ int main(void)
 		}
 		old_encoder_reading_f = encoder_reading_f;
 
-		if(contor >= 700000)
+		if(contor >= 70000)
 		{
 			contor = 0;
 			display_rds_info();
 			print_serial2_message("==================");
-			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+			HAL_GPIO_TogglePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin);
 		}
 
 	  //display_rds_info();
 
 	  //HAL_Delay(500);
-	  //HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+	  //  HAL_GPIO_WritePin(HCMS_CE_LED_GPIO_Port, LED_HCMS_CE_LED_Pin, GPIO_PIN_RESET);
 	  //HAL_Delay(500);
 
   }
