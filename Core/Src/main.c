@@ -1,7 +1,7 @@
 /* USER CODE BEGIN Header */
 
 // Functioneaza cu dsp_init declarat in RAM
-// se blocheaza dupa un timp din cauza RDS
+
 
 /**
   ******************************************************************************
@@ -196,10 +196,18 @@ int main(void)
 
         //HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 		encoder_reading_v = (TIM2->CNT>>1) + 30;
+		if (encoder_reading_v < 30)
+		{
+			TIM2->CNT = 1;                         //limit vol 0
+			encoder_reading_v = (TIM2->CNT>>1) + 30;
+		}
+		if (encoder_reading_v > 90)
+		{
+			TIM2->CNT = 120;                         //limit vol 60
+			encoder_reading_v = (TIM2->CNT>>1) + 30;
+		}
 		if(encoder_reading_v != old_encoder_reading_v)
 		{
-
-		   //int Setvolume = map(encoder_reading_v, 0, 100, -599, 50);
 		   volume = map(encoder_reading_v, 0, 100, -599, 50);
 		   Set_Cmd(48, 10, 1, volume);
 		   sprintf(message_volume, "Vol = %i  \r", encoder_reading_v - 30);
@@ -212,6 +220,18 @@ int main(void)
 
 
 		encoder_reading_f = 100*(TIM3->CNT>>1);
+		if (encoder_reading_f > 50000)
+		{
+			TIM3->CNT = 1;                         //limit f=87.5 Mhz
+			encoder_reading_f = 100*(TIM3->CNT>>1);
+		}
+
+		if (encoder_reading_f > 20500)
+		{
+			TIM3->CNT = 410;                       //limit f=108 Mhz
+			encoder_reading_f = 100*(TIM3->CNT>>1);
+		}
+
 		if(encoder_reading_f != old_encoder_reading_f)
 		{
 			clear_rds_buffers(rdsProgramType,17);
