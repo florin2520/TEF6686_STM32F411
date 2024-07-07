@@ -29,7 +29,9 @@ extern "C" {
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
+
 void print_serial2_message_number(char *msg, uint32_t var);
+void print_serial1_message(char *msg);
 void print_serial2_message(char *msg);
 /* USER CODE END Includes */
 

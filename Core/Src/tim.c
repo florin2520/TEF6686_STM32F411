@@ -40,6 +40,7 @@ void MX_TIM2_Init(void)
 
   /* USER CODE BEGIN TIM2_Init 1 */
 
+  //TIM2->CCER |= 32; // invert up/down count
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
@@ -67,7 +68,7 @@ void MX_TIM2_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM2_Init 2 */
-
+  TIM2->CCER ^= 32; // invert up/down count
   /* USER CODE END TIM2_Init 2 */
 
 }
@@ -111,7 +112,7 @@ void MX_TIM3_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM3_Init 2 */
-
+  TIM3->CCER ^= 32; // invert up/down count
   /* USER CODE END TIM3_Init 2 */
 
 }

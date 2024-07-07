@@ -25,21 +25,26 @@ char str2[30];
 #define pgm_read_word(addr) (*(const unsigned short *)(addr))
 
 char rdsRadioText[65];
+
 char rdsProgramService[9];
+
 uint8_t rdsAb;
 char rdsProgramType[17];
+
 uint8_t isRdsNewRadioText;
 
 uint16_t seekMode;
 uint16_t seekStartFrequency;
 
-
+uint8_t isRDSReady;
 struct RdsInfo rdsInfo;
 
-uint8_t isRDSReady;
+
 char programTypePrevious[17] = "                ";
 char programServicePrevious[9];
 char radioTextPrevious[65];
+
+
 
 const char* ptyLUT[51] = {
       "      None      ",
@@ -341,36 +346,36 @@ void dsp_write_data(const uint8_t* data)
 //  }
 //}
 
-void get_RDS()
-{
-  int16_t uRDS_RDS[8] = {0};
-  Get_Cmd(32, 131, uRDS_RDS, 8);
-  print_serial2_message("get_RDS1");
-  if ( bitRead(uRDS_RDS[0], 15) == 1 )
-  {
-	//print_serial2_message("get_RDS if");
-    //Serial.print('P');
-	print_serial2_message("P");
-    serial_hex(uRDS_RDS[1] >> 8);
-    serial_hex(uRDS_RDS[1]);
-    //Serial.print('\n');
-    //Serial.print('R');
-    print_serial2_message("\nR");
-
-    serial_hex(uRDS_RDS[1] >> 8);
-    serial_hex(uRDS_RDS[2] >> 8);
-    serial_hex(uRDS_RDS[2]);
-    serial_hex(uRDS_RDS[3] >> 8);
-    serial_hex(uRDS_RDS[3]);
-    serial_hex(uRDS_RDS[4] >> 8); /// aici este denumirea postului R A T A
-    serial_hex(uRDS_RDS[4]);      //  aici este denumirea postului R C U L
-    serial_hex(uRDS_RDS[5] >> 8);
-//    sprintf(str2, "%s\n\r", (char)uRDS_RDS);
-//    HAL_UART_Transmit(&huart2, (uint8_t *)str2, strlen (str2), HAL_MAX_DELAY);
-    //Serial.print('\n');
-    print_serial2_message("\n");
-  }
-}
+//void get_RDS()
+//{
+//  int16_t uRDS_RDS[8] = {0};
+//  Get_Cmd(32, 131, uRDS_RDS, 8);
+//  print_serial2_message("get_RDS1");
+//  if ( bitRead(uRDS_RDS[0], 15) == 1 )
+//  {
+//	//print_serial2_message("get_RDS if");
+//    //Serial.print('P');
+//	print_serial2_message("P");
+//    serial_hex(uRDS_RDS[1] >> 8);
+//    serial_hex(uRDS_RDS[1]);
+//    //Serial.print('\n');
+//    //Serial.print('R');
+//    print_serial2_message("\nR");
+//
+//    serial_hex(uRDS_RDS[1] >> 8);
+//    serial_hex(uRDS_RDS[2] >> 8);
+//    serial_hex(uRDS_RDS[2]);
+//    serial_hex(uRDS_RDS[3] >> 8);
+//    serial_hex(uRDS_RDS[3]);
+//    serial_hex(uRDS_RDS[4] >> 8); /// aici este denumirea postului R A T A
+//    serial_hex(uRDS_RDS[4]);      //  aici este denumirea postului R C U L
+//    serial_hex(uRDS_RDS[5] >> 8);
+////    sprintf(str2, "%s\n\r", (char)uRDS_RDS);
+////    HAL_UART_Transmit(&huart2, (uint8_t *)str2, strlen (str2), HAL_MAX_DELAY);
+//    //Serial.print('\n');
+//    print_serial2_message("\n");
+//  }
+//}
 
 void serial_hex(uint8_t val)
 {
@@ -457,13 +462,17 @@ void setup()
 //
 
   // set volume
-    volume = 60;
+    volume = 100;
     Set_Cmd(48, 11, 1, 0);  //unmute
     int Setvolume = map(volume, 0, 100, -599, 50);
     Set_Cmd(48, 10, 1, Setvolume);
 
   // set freq
-    MODF_FREQ = 88700;
+    MODF_FREQ = 104500;
+    //MODF_FREQ = 88700;
+    //MODF_FREQ = 103600;
+    //MODF_FREQ = 98000;
+    //MODF_FREQ = 90600;
     Set_Cmd(32, 1, 2, 1, MODF_FREQ / 10);
 
     if (Filter_FM == 16) {Filter_FM = -1;}
@@ -782,18 +791,64 @@ int bitRead(char bit, uint16_t number)
     return(bit & number);
 }
 
-
 uint8_t readRDS()
 {
-  char status;
-  uint8_t rdsBHigh, rdsBLow, rdsCHigh, rdsCLow, rdsDHigh, isReady, rdsDLow;
+	/* uRDS_RDS[0] = status
+	 * uRDS_RDS[1] = A_block
+	 * uRDS_RDS[2] = B_block
+	 * uRDS_RDS[3] = C_block
+	 * uRDS_RDS[4] = D_block
+	 * uRDS_RDS[5] = dec_error error code (determined by decoder)
+	 *
+	 *
+	 * */
+
+	int16_t uRDS_RDS[8] = {0};
+	//uint16_t uRDS_RDS[8] = {0};
+	Get_Cmd(32, 131, uRDS_RDS, 8);
+//
+//	  if ( bitRead(uRDS_RDS[0], 15) == 1 )
+//	  {
+//	    //Serial.print('P');
+//		print_serial2_message("P");
+//	    serial_hex(uRDS_RDS[1] >> 8);
+//	    serial_hex(uRDS_RDS[1]);
+//	    //Serial.print('\n');
+//	    //Serial.print('R');
+//
+//	    serial_hex(uRDS_RDS[1] >> 8);
+//	    serial_hex(uRDS_RDS[2] >> 8);
+//	    serial_hex(uRDS_RDS[2]);
+//	    serial_hex(uRDS_RDS[3] >> 8);
+//	    serial_hex(uRDS_RDS[3]);
+//	    serial_hex(uRDS_RDS[4] >> 8); /// aici este denumirea postului R A T A
+//	    serial_hex(uRDS_RDS[4]);      //  aici este denumirea postului R C U L
+//	    serial_hex(uRDS_RDS[5] >> 8);
+//	    //Serial.print('\n');
+//	  }
+
+  //char status;
+  uint8_t rdsBHigh, rdsBLow, rdsCHigh, rdsCLow, rdsDHigh, isReady = 0, rdsDLow;
 
   uint16_t rdsStat, rdsA, rdsB, rdsC, rdsD, rdsErr;
+
+  rdsStat = uRDS_RDS[0];
+  rdsA = uRDS_RDS[1];
+  rdsB = uRDS_RDS[2];
+  rdsC = uRDS_RDS[3];
+  rdsD = uRDS_RDS[4];
+  rdsErr = uRDS_RDS[5];
   //uint16_t result = devTEF668x_Radio_Get_RDS_Data(1, &rdsStat, &rdsA, &rdsB, &rdsC, &rdsD, &rdsErr);
 
-//  if (!(result && (rdsB != 0x0) && ((rdsStat & 0x8000) != 0x0) && ((rdsErr & 0x0a00) == 0x0))) {
+//  if (!(result && (rdsB != 0x0) && ((rdsStat & 0x8000) != 0x0) && ((rdsErr & 0x0a00) == 0x0)))
+//  {
 //    return isReady;
 //  }
+
+    if (!((rdsStat & 0x8000) != 0x0) && ((rdsErr & 0x0a00) == 0x0))
+    {
+    	return isReady;
+    }
 
   rdsBHigh = (uint8_t)(rdsB >> 8);
   rdsBLow = (uint8_t)rdsB;
@@ -911,21 +966,25 @@ void rdsFormatString(char* str, uint16_t length)
 }
 
 
+//
+//void show_Rds()
+//{
+//  isRDSReady = readRDS();
+//  getRDS(&rdsInfo);
+//
+//  showPTY();
+//  showPS();
+//  showRadioText();
+//}
 
-void show_Rds() {
-  isRDSReady = readRDS();
-  getRDS(&rdsInfo);
-
-  showPTY();
-  showPS();
-  showRadioText();
-}
-
-void showPTY() {
-  if ((isRDSReady == 1) && !str_cmp(rdsInfo.programType, programTypePrevious, 16))
+void showPTY()
+{
+  //if ((isRDSReady == 1) && !str_cmp(rdsInfo.programType, programTypePrevious, 16))
   {
     //Serial.print(rdsInfo.programType);
     strcpy(programTypePrevious, rdsInfo.programType);
+    print_serial1_message("PTY: ");
+    print_serial2_message(programTypePrevious);
     //Serial.println();
     //lcd.setPosition(4, 11);
     //lcd.print(rdsInfo.programType);
@@ -933,13 +992,16 @@ void showPTY() {
   }
 }
 
-void showPS() {
-  if ((isRDSReady == 1) && (strlen(rdsInfo.programService) == 8) && !str_cmp(rdsInfo.programService, programServicePrevious, 8))
+void showPS()
+{
+  //if ((isRDSReady == 1) && (strlen(rdsInfo.programService) == 8) && !str_cmp(rdsInfo.programService, programServicePrevious, 8))
   {
     //Serial.print("-=[ ");
     //Serial.print(rdsInfo.programService);
    // Serial.print(" ]=-");
     strcpy(programServicePrevious, rdsInfo.programService);
+    print_serial1_message("PS : ");
+    print_serial2_message(programServicePrevious);
     //Serial.println();
     //lcd.setPosition(4, 0);
     //lcd.print(rdsInfo.programService);
@@ -947,11 +1009,14 @@ void showPS() {
   }
 }
 
-void showRadioText() {
-  if ((isRDSReady == 1) && !str_cmp(rdsInfo.radioText, radioTextPrevious, 65))
+void showRadioText()
+{
+  //if ((isRDSReady == 1) && !str_cmp(rdsInfo.radioText, radioTextPrevious, 65))
   {
     //Serial.print(rdsInfo.radioText);
     strcpy(radioTextPrevious, rdsInfo.radioText);
+    print_serial1_message("RDS: ");
+    print_serial2_message(radioTextPrevious);
     //Serial.println();
 //    lcd.setPosition(3, 11);
     //lcd.setPosition(3, 0);
@@ -968,5 +1033,14 @@ bool str_cmp(char* str1, char* str2, int length)
     }
   }
   return true;
+}
+
+void clear_rds_buffers(char* str1, uint8_t length)
+{
+	  for (int i = 0; i < length; i++)
+	  {
+        str1[i] = ' ';
+	  }
+
 }
 
