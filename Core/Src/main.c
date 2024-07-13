@@ -67,7 +67,7 @@ volatile bool seek_up;
 volatile bool seek_down;
 //char *start_radio = "Start radio...\n\r";
 char str1[30];
-char message_frequency[26];
+char message_frequency[36];
 char message_volume[26];
 
 extern int16_t volume;
@@ -94,6 +94,8 @@ extern char rdsProgramType[17];
 char display_buffer[] = "        "; // 8 caractere
 
 char message_freq_static[13];
+
+uint16_t seek_frequency;
 
 /* USER CODE END PV */
 
@@ -198,32 +200,42 @@ int main(void)
 
 
       // IF Button seek up Is Pressed
-      if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_14) == 0)  // seek up
-      {
-    	    clear_display();
-    	   	writeDigitAscii(0, 'S', false);
-    	    writeDigitAscii(1, 'E', false);
-    	    writeDigitAscii(2, 'E', false);
-    	    writeDigitAscii(3, 'K', false);
-    	    writeDigitAscii(4, ' ', false);
-    	    writeDigitAscii(5, 'U', false);
-    	    writeDigitAscii(6, 'P', false);
-    	    writeDisplay(DISPLAY_ADDRESS);
-      }
+//      if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_14) == 0)  // seek up
+//      {
+//    	    clear_display();
+//    	   	writeDigitAscii(0, 'S', false);
+//    	    writeDigitAscii(1, 'E', false);
+//    	    writeDigitAscii(2, 'E', false);
+//    	    writeDigitAscii(3, 'K', false);
+//    	    writeDigitAscii(4, ' ', false);
+//    	    writeDigitAscii(5, 'U', false);
+//    	    writeDigitAscii(6, 'P', false);
+//    	    writeDisplay(DISPLAY_ADDRESS);
+//
+//    	    //tuneUp();
+//    	    seek_frequency = seekUp();
+//		    sprintf(message_frequency, "seek_frequency %i\r", seek_frequency);
+//		    print_serial2_message(message_frequency);
+//      }
       // IF Button seek down Is Pressed
-      if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_15) == 0)  // seek down
-      {
-			clear_display();
-			writeDigitAscii(0, 'S', false);
-			writeDigitAscii(1, 'E', false);
-			writeDigitAscii(2, 'E', false);
-			writeDigitAscii(3, 'K', false);
-			writeDigitAscii(4, ' ', false);
-			writeDigitAscii(5, 'D', false);
-			writeDigitAscii(6, 'O', false);
-			writeDigitAscii(7, 'W', false);
-			writeDisplay(DISPLAY_ADDRESS);
-      }
+//      if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_15) == 0)  // seek down
+//      {
+//			clear_display();
+//			writeDigitAscii(0, 'S', false);
+//			writeDigitAscii(1, 'E', false);
+//			writeDigitAscii(2, 'E', false);
+//			writeDigitAscii(3, 'K', false);
+//			writeDigitAscii(4, ' ', false);
+//			writeDigitAscii(5, 'D', false);
+//			writeDigitAscii(6, 'O', false);
+//			writeDigitAscii(7, 'W', false);
+//			writeDisplay(DISPLAY_ADDRESS);
+//
+//			//tuneDown();
+//			seek_frequency = seekDown();
+//		    sprintf(message_frequency, "seek_frequency %i\r", seek_frequency);
+//		    print_serial2_message(message_frequency);
+//      }
 
 		encoder_reading_v = (TIM2->CNT>>1) + 30;
 		if (encoder_reading_v < 30)
@@ -288,16 +300,10 @@ int main(void)
 		if(contor >= 70000)
 		{
 			contor = 0;
-			display_rds_info();
-			print_serial2_message("==================");
+			//display_rds_info();
+			//print_serial2_message("==================");
 			HAL_GPIO_TogglePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin);
 		}
-
-	  //display_rds_info();
-
-	  //HAL_Delay(500);
-	  //  HAL_GPIO_WritePin(HCMS_CE_LED_GPIO_Port, LED_HCMS_CE_LED_Pin, GPIO_PIN_RESET);
-	  //HAL_Delay(500);
 
   }
   /* USER CODE END 3 */
