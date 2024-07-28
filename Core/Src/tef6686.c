@@ -525,23 +525,23 @@ void setup()
 //
 
   // set volume
-    volume = 100;
+    volume = 130;
     Set_Cmd(48, 11, 1, 0);  //unmute
     int Setvolume = map(volume, 0, 100, -599, 50);
     Set_Cmd(48, 10, 1, Setvolume);
 
   // set freq
-    MODF_FREQ = 104500;
+    //MODF_FREQ = 104500;
     //MODF_FREQ = 88700;
     //MODF_FREQ = 103600;
     //MODF_FREQ = 98000;
     //MODF_FREQ = 90600;
-    Set_Cmd(32, 1, 2, 1, MODF_FREQ / 10);
+    //Set_Cmd(32, 1, 2, 1, MODF_FREQ / 10);
 
-    if (Filter_FM == 16) {Filter_FM = -1;}
-    current_filter = Filter_FM;
+   // if (Filter_FM == 16) {Filter_FM = -1;}
+   // current_filter = Filter_FM;
     //Set_Cmd(32, 10, 4, current_filter == -1 ? 1 : 0, pgm_read_word_near(FMFilterMap + current_filter), 1000, 1000);
-    Set_Cmd(32, 10, 4, current_filter == -1 ? 1 : 0, pgm_read_word(FMFilterMap + current_filter), 1000, 1000);
+   // Set_Cmd(32, 10, 4, current_filter == -1 ? 1 : 0, pgm_read_word(FMFilterMap + current_filter), 1000, 1000);
 }
 
 //void loop()
@@ -1593,7 +1593,8 @@ typedef struct{
 	uint16_t len;	//buffer size of all data
 }TEF668x_CMD_LEN;
 */
-#define TEF668x_CMD_LEN_MAX	20
+//#define TEF668x_CMD_LEN_MAX	20
+#define TEF668x_CMD_LEN_MAX	31
 
 uint16_t devTEF668x_Set_Cmd(TEF668x_MODULE module, uint8_t cmd, uint16_t len,...)
 {
@@ -1620,20 +1621,56 @@ uint16_t devTEF668x_Set_Cmd(TEF668x_MODULE module, uint8_t cmd, uint16_t len,...
 	va_end(vArgs);
 
 	return Tuner_WriteBuffer(buf, len);
+
+
+
+//	  uint8_t buf[31];
+//	  //uint16_t temp;
+//	  uint32_t temp;
+//	  va_list vArgs;
+//	  va_start(vArgs, len);
+//	  buf[0] = module;
+//	  buf[1] = cmd;
+//	  buf[2] = 1;
+//	  for (uint8_t i = 0; i < len; i++)
+//	  {
+//	    //temp = va_arg(vArgs, uint16_t);
+//		//temp = va_arg(vArgs, int);
+//		temp = va_arg(vArgs, uint32_t);
+//	    buf[3 + i * 2] = (uint8_t)(temp >> 8);
+//	    buf[4 + i * 2] = (uint8_t)temp;
+//	  }
+//	  va_end(vArgs);
+//	  Write(buf, len * 2 + 3);
+//	  return 0;  // no error
 }
 
 
 static uint16_t devTEF668x_Get_Cmd(TEF668x_MODULE module, uint8_t cmd, uint8_t *receive,uint16_t len)
 {
-	uint8_t buf[3];
+//	uint8_t buf[3];
+//
+//	buf[0]= module;			//module,		FM/AM/APP
+//	buf[1]= cmd;		//cmd,		1,2,10,...
+//	buf[2]= 1;	//index, 		always 1
+//
+//	Tuner_WriteBuffer(buf, 3);
+//
+//	return Tuner_ReadBuffer(receive,len);
 
-	buf[0]= module;			//module,		FM/AM/APP
-	buf[1]= cmd;		//cmd,		1,2,10,...
-	buf[2]= 1;	//index, 		always 1
+	  uint8_t buf[3];
+	  buf[0] = module;
+	  buf[1] = cmd;
+	  buf[2] = 1;
+	  Write(buf, 3);
+	  Read((uint8_t*)receive, 2 * len);
+	  for (uint8_t i = 0; i < len; i++)
+	  {
+	    uint16_t newval = (uint8_t)(receive[i] >> 8) | (((uint8_t)(receive[i])) << 8);
+	    receive[i] = newval;
+	  }
 
-	Tuner_WriteBuffer(buf, 3);
-
-	return Tuner_ReadBuffer(receive,len);
+	  return 0;  // no error
 }
 
 /*
@@ -3665,4 +3702,13 @@ unsigned char Tuner_ReadBuffer(uint8_t *buf, uint16_t len)
 		return 1;
 	else
 		return 0;
+}
+
+
+void setFrequency(uint16_t frequency) {
+  Radio_SetFreq(Radio_PRESETMODE, FM2_BAND, frequency);
+}
+
+uint16_t getFrequency() {
+  return Radio_GetCurrentFreq();
 }

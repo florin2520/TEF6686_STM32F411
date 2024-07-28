@@ -183,7 +183,7 @@ int main(void)
 	writeDisplay(DISPLAY_ADDRESS);
 	HAL_Delay(1500);
 	clear_display();
-
+	setFrequency(10290);
   // set volume
 //    volume = 80;
 //    Set_Cmd(48, 11, 1, 0);  //unmute
@@ -200,42 +200,46 @@ int main(void)
 
 
       // IF Button seek up Is Pressed
-//      if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_14) == 0)  // seek up
-//      {
-//    	    clear_display();
-//    	   	writeDigitAscii(0, 'S', false);
-//    	    writeDigitAscii(1, 'E', false);
-//    	    writeDigitAscii(2, 'E', false);
-//    	    writeDigitAscii(3, 'K', false);
-//    	    writeDigitAscii(4, ' ', false);
-//    	    writeDigitAscii(5, 'U', false);
-//    	    writeDigitAscii(6, 'P', false);
-//    	    writeDisplay(DISPLAY_ADDRESS);
-//
-//    	    //tuneUp();
-//    	    seek_frequency = seekUp();
-//		    sprintf(message_frequency, "seek_frequency %i\r", seek_frequency);
-//		    print_serial2_message(message_frequency);
-//      }
+      if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_14) == 0)  // seek up
+      {
+    	    clear_display();
+    	   	writeDigitAscii(0, 'S', false);
+    	    writeDigitAscii(1, 'E', false);
+    	    writeDigitAscii(2, 'E', false);
+    	    writeDigitAscii(3, 'K', false);
+    	    writeDigitAscii(4, ' ', false);
+    	    writeDigitAscii(5, 'U', false);
+    	    writeDigitAscii(6, 'P', false);
+    	    writeDisplay(DISPLAY_ADDRESS);
+
+    	    //tuneUp();
+    	    //seek_frequency = seekUp();
+		    //sprintf(message_frequency, "seek_frequency %i\r", seek_frequency);
+		    //print_serial2_message(message_frequency);
+    	    setFrequency(10290);
+    	    //uint16_t current_freq =  getFrequency();
+    	    //sprintf(message_frequency, "current_freq %i\r", current_freq);
+    	    //print_serial2_message(message_frequency);
+      }
       // IF Button seek down Is Pressed
-//      if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_15) == 0)  // seek down
-//      {
-//			clear_display();
-//			writeDigitAscii(0, 'S', false);
-//			writeDigitAscii(1, 'E', false);
-//			writeDigitAscii(2, 'E', false);
-//			writeDigitAscii(3, 'K', false);
-//			writeDigitAscii(4, ' ', false);
-//			writeDigitAscii(5, 'D', false);
-//			writeDigitAscii(6, 'O', false);
-//			writeDigitAscii(7, 'W', false);
-//			writeDisplay(DISPLAY_ADDRESS);
-//
-//			//tuneDown();
-//			seek_frequency = seekDown();
-//		    sprintf(message_frequency, "seek_frequency %i\r", seek_frequency);
-//		    print_serial2_message(message_frequency);
-//      }
+      if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_15) == 0)  // seek down
+      {
+			clear_display();
+			writeDigitAscii(0, 'S', false);
+			writeDigitAscii(1, 'E', false);
+			writeDigitAscii(2, 'E', false);
+			writeDigitAscii(3, 'K', false);
+			writeDigitAscii(4, ' ', false);
+			writeDigitAscii(5, 'D', false);
+			writeDigitAscii(6, 'O', false);
+			writeDigitAscii(7, 'W', false);
+			writeDisplay(DISPLAY_ADDRESS);
+
+			//tuneDown();
+			seek_frequency = seekDown();
+		    sprintf(message_frequency, "seek_frequency %i\r", seek_frequency);
+		    print_serial2_message(message_frequency);
+      }
 
 		encoder_reading_v = (TIM2->CNT>>1) + 30;
 		if (encoder_reading_v < 30)
@@ -261,37 +265,41 @@ int main(void)
 
 
 
-		encoder_reading_f = 100*(TIM3->CNT>>1);
-		if (encoder_reading_f > 50000)
-		{
-			TIM3->CNT = 1;                         //limit f=87.5 Mhz
-			encoder_reading_f = 100*(TIM3->CNT>>1);
-		}
-
-		if (encoder_reading_f > 20500)
-		{
-			TIM3->CNT = 410;                       //limit f=108 Mhz
-			encoder_reading_f = 100*(TIM3->CNT>>1);
-		}
-
+//		encoder_reading_f = 100*(TIM3->CNT>>1);
+//		if (encoder_reading_f > 50000)
+//		{
+//			TIM3->CNT = 1;                         //limit f=87.5 Mhz
+//			encoder_reading_f = 100*(TIM3->CNT>>1);
+//		}
+//
+//		if (encoder_reading_f > 20500)
+//		{
+//			TIM3->CNT = 410;                       //limit f=108 Mhz
+//			encoder_reading_f = 100*(TIM3->CNT>>1);
+//		}
+		encoder_reading_f = (TIM3->CNT>>1);
 		if(encoder_reading_f != old_encoder_reading_f)
 		{
 			clear_rds_buffers(rdsProgramType,17);
 		    clear_rds_buffers(rdsProgramService, 9);
 		    clear_rds_buffers(rdsRadioText, 65);
-
-		   freq = 87500 + encoder_reading_f;
-	  	   REG_FREQ = freq;
-		   if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000))
-		   {
-			 Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
-			 MODF_FREQ = REG_FREQ;
-		   }
-            uint16_t freq_before_point = freq / 1000;
-            uint16_t freq_after_point = freq % 1000;
-            freq_after_point = freq_after_point / 100;
-		    sprintf(message_frequency, "Frecv = %i.%i MHz \r", freq_before_point, freq_after_point);
+		    uint16_t current_freq =  getFrequency();
+		    freq = current_freq + 10*encoder_reading_f;
+		    setFrequency(freq);
+		   //freq = 87500 + encoder_reading_f;
+		    sprintf(message_frequency, "Frecv = %lu MHz \r", freq);
 		    print_serial2_message(message_frequency);
+//	  	   REG_FREQ = freq;
+//		   if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000))
+//		   {
+//			 Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
+//			 MODF_FREQ = REG_FREQ;
+//		   }
+            //uint16_t freq_before_point = freq / 1000;
+            //uint16_t freq_after_point = freq % 1000;
+           // freq_after_point = freq_after_point / 100;
+		    //sprintf(message_frequency, "Frecv = %i.%i MHz \r", freq_before_point, freq_after_point);
+		    //print_serial2_message(message_frequency);
 		    clear_display();
 		    disp_freq(freq);
 		}

@@ -23,6 +23,8 @@
 #define LOW  0;
 #endif
 
+#define RADIO_LITHIO_ENABLE
+
 struct RdsInfo
 {
   char programType[17];
@@ -545,4 +547,7 @@ uint16_t devTEF668x_Radio_Set_StHiBlend_Time(uint8_t fm,uint16_t slow_attack,uin
 
 unsigned char Tuner_WriteBuffer(uint8_t *buf,uint16_t len);
 unsigned char Tuner_ReadBuffer(uint8_t *buf, uint16_t len);
+
+void setFrequency(uint16_t frequency);    // frequency as int, i.e. 100.00 as 10000
+uint16_t getFrequency();                  // returns the current frequency
 #endif /* INC_TEF6686_H_ */
