@@ -73,6 +73,8 @@ char message_volume[26];
 extern int16_t volume;
 extern uint32_t freq;
 
+uint32_t current_freq;  // todo local
+
 extern uint32_t REG_FREQ;
 extern uint32_t MODA_FREQ;
 extern uint32_t MODF_FREQ;
@@ -183,7 +185,10 @@ int main(void)
 	writeDisplay(DISPLAY_ADDRESS);
 	HAL_Delay(1500);
 	clear_display();
-	setFrequency(10290);
+	setFrequency(8750);
+    current_freq =  getFrequency();
+    sprintf(message_frequency, "Frecv = %lu MHz \r", current_freq);
+    print_serial2_message(message_frequency);
   // set volume
 //    volume = 80;
 //    Set_Cmd(48, 11, 1, 0);  //unmute
@@ -217,6 +222,8 @@ int main(void)
 		    //sprintf(message_frequency, "seek_frequency %i\r", seek_frequency);
 		    //print_serial2_message(message_frequency);
     	    setFrequency(10290);
+    	    freq =  getFrequency();
+    	    TIM3->CNT = 1;
     	    //uint16_t current_freq =  getFrequency();
     	    //sprintf(message_frequency, "current_freq %i\r", current_freq);
     	    //print_serial2_message(message_frequency);
@@ -235,10 +242,13 @@ int main(void)
 			writeDigitAscii(7, 'W', false);
 			writeDisplay(DISPLAY_ADDRESS);
 
+    	    setFrequency(10450);
+    	    freq =  getFrequency();
+    	    TIM3->CNT = 1;
 			//tuneDown();
-			seek_frequency = seekDown();
-		    sprintf(message_frequency, "seek_frequency %i\r", seek_frequency);
-		    print_serial2_message(message_frequency);
+			//seek_frequency = seekDown();
+		    //sprintf(message_frequency, "seek_frequency %i\r", seek_frequency);
+		    //print_serial2_message(message_frequency);
       }
 
 		encoder_reading_v = (TIM2->CNT>>1) + 30;
@@ -265,29 +275,31 @@ int main(void)
 
 
 
-//		encoder_reading_f = 100*(TIM3->CNT>>1);
-//		if (encoder_reading_f > 50000)
-//		{
-//			TIM3->CNT = 1;                         //limit f=87.5 Mhz
-//			encoder_reading_f = 100*(TIM3->CNT>>1);
-//		}
-//
-//		if (encoder_reading_f > 20500)
-//		{
-//			TIM3->CNT = 410;                       //limit f=108 Mhz
-//			encoder_reading_f = 100*(TIM3->CNT>>1);
-//		}
-		encoder_reading_f = (TIM3->CNT>>1);
+		encoder_reading_f = 10*(TIM3->CNT>>1);
+		if (encoder_reading_f > 30000)
+		{
+			TIM3->CNT = 1;                         //limit f=87.5 Mhz
+			encoder_reading_f = 10*(TIM3->CNT>>1);
+		}
+
+		if (encoder_reading_f > 2050)
+		{
+			TIM3->CNT = 410;                       //limit f=108 Mhz
+			encoder_reading_f = 10*(TIM3->CNT>>1);
+		}
+
 		if(encoder_reading_f != old_encoder_reading_f)
 		{
 			clear_rds_buffers(rdsProgramType,17);
 		    clear_rds_buffers(rdsProgramService, 9);
 		    clear_rds_buffers(rdsRadioText, 65);
-		    uint16_t current_freq =  getFrequency();
-		    freq = current_freq + 10*encoder_reading_f;
+		    current_freq =  getFrequency();
+		    //freq = current_freq + encoder_reading_f;
+
+		    freq = 8750 + encoder_reading_f;
 		    setFrequency(freq);
-		   //freq = 87500 + encoder_reading_f;
-		    sprintf(message_frequency, "Frecv = %lu MHz \r", freq);
+		    current_freq =  getFrequency();
+		    sprintf(message_frequency, "Frecv = %lu MHz \r", current_freq);
 		    print_serial2_message(message_frequency);
 //	  	   REG_FREQ = freq;
 //		   if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000))
@@ -413,15 +425,15 @@ void disp_vol(uint32_t vol)  // 0-60
 }
 void disp_freq(uint32_t freq)
 {
-	if (freq >= 100000)
+	if (freq >= 10000)
 	{
-		uint16_t freq_0 = freq / 100000; // prima cifra
-		uint16_t f_0 = freq % 100000;
-		uint16_t freq_1 = f_0 / 10000;   // a doua cifra
-		uint16_t f_1 =  f_0 % 10000;
-		uint16_t freq_2 = f_1 / 1000;   // a treia cifra  (*cu punct jos)
-		uint16_t freq_3 = f_1 %  1000;
-		uint16_t freq_4 = freq_3 / 100;   // a patra cifra
+		uint16_t freq_0 = freq / 10000; // prima cifra
+		uint16_t f_0 = freq % 10000;
+		uint16_t freq_1 = f_0 / 1000;   // a doua cifra
+		uint16_t f_1 =  f_0 % 1000;
+		uint16_t freq_2 = f_1 / 100;   // a treia cifra  (*cu punct jos)
+		uint16_t freq_3 = f_1 %  100;
+		uint16_t freq_4 = freq_3 / 10;   // a patra cifra
 
 		writeDigitAscii(0, 'F', false);
 		writeDigitAscii(1, ' ', false);
@@ -433,11 +445,11 @@ void disp_freq(uint32_t freq)
 	}
 	else
 	{
-		uint16_t freq_0 = freq / 10000; // prima cifra
-		uint16_t f_0 = freq % 10000;
-		uint16_t freq_1 = f_0 / 1000;   // a doua cifra
-		uint16_t f_1 =  f_0 % 1000;
-		uint16_t freq_2 = f_1 / 100;   // a treia cifra  (*cu punct jos)
+		uint16_t freq_0 = freq / 1000; // prima cifra
+		uint16_t f_0 = freq % 1000;
+		uint16_t freq_1 = f_0 / 100;   // a doua cifra
+		uint16_t f_1 =  f_0 % 100;
+		uint16_t freq_2 = f_1 / 10;   // a treia cifra  (*cu punct jos)
 		//uint16_t freq_3 = f_1 % 100;   // a patra cifra
 
 		writeDigitAscii(0, 'F', false);
