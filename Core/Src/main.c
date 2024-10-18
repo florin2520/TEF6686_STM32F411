@@ -294,7 +294,7 @@ int main(void)
 		    clear_rds_buffers(rdsProgramService, 9);
 		    clear_rds_buffers(rdsRadioText, 65);
 		    current_freq =  getFrequency();
-		    //freq = current_freq + encoder_reading_f;
+
 
 		    freq = 8750 + encoder_reading_f;
 		    setFrequency(freq);

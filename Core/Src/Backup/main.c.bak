@@ -67,11 +67,13 @@ volatile bool seek_up;
 volatile bool seek_down;
 //char *start_radio = "Start radio...\n\r";
 char str1[30];
-char message_frequency[26];
+char message_frequency[36];
 char message_volume[26];
 
 extern int16_t volume;
 extern uint32_t freq;
+
+uint32_t current_freq;  // todo local
 
 extern uint32_t REG_FREQ;
 extern uint32_t MODA_FREQ;
@@ -94,6 +96,8 @@ extern char rdsProgramType[17];
 char display_buffer[] = "        "; // 8 caractere
 
 char message_freq_static[13];
+
+uint16_t seek_frequency;
 
 /* USER CODE END PV */
 
@@ -181,7 +185,10 @@ int main(void)
 	writeDisplay(DISPLAY_ADDRESS);
 	HAL_Delay(1500);
 	clear_display();
-
+	setFrequency(8750);
+    current_freq =  getFrequency();
+    sprintf(message_frequency, "Frecv = %lu MHz \r", current_freq);
+    print_serial2_message(message_frequency);
   // set volume
 //    volume = 80;
 //    Set_Cmd(48, 11, 1, 0);  //unmute
@@ -209,6 +216,17 @@ int main(void)
     	    writeDigitAscii(5, 'U', false);
     	    writeDigitAscii(6, 'P', false);
     	    writeDisplay(DISPLAY_ADDRESS);
+
+    	    //tuneUp();
+    	    //seek_frequency = seekUp();
+		    //sprintf(message_frequency, "seek_frequency %i\r", seek_frequency);
+		    //print_serial2_message(message_frequency);
+    	    setFrequency(10290);
+    	    freq =  getFrequency();
+    	    TIM3->CNT = 1;
+    	    //uint16_t current_freq =  getFrequency();
+    	    //sprintf(message_frequency, "current_freq %i\r", current_freq);
+    	    //print_serial2_message(message_frequency);
       }
       // IF Button seek down Is Pressed
       if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_15) == 0)  // seek down
@@ -223,6 +241,14 @@ int main(void)
 			writeDigitAscii(6, 'O', false);
 			writeDigitAscii(7, 'W', false);
 			writeDisplay(DISPLAY_ADDRESS);
+
+    	    setFrequency(10450);
+    	    freq =  getFrequency();
+    	    TIM3->CNT = 1;
+			//tuneDown();
+			//seek_frequency = seekDown();
+		    //sprintf(message_frequency, "seek_frequency %i\r", seek_frequency);
+		    //print_serial2_message(message_frequency);
       }
 
 		encoder_reading_v = (TIM2->CNT>>1) + 30;
@@ -249,17 +275,17 @@ int main(void)
 
 
 
-		encoder_reading_f = 100*(TIM3->CNT>>1);
-		if (encoder_reading_f > 50000)
+		encoder_reading_f = 10*(TIM3->CNT>>1);
+		if (encoder_reading_f > 30000)
 		{
 			TIM3->CNT = 1;                         //limit f=87.5 Mhz
-			encoder_reading_f = 100*(TIM3->CNT>>1);
+			encoder_reading_f = 10*(TIM3->CNT>>1);
 		}
 
-		if (encoder_reading_f > 20500)
+		if (encoder_reading_f > 2050)
 		{
 			TIM3->CNT = 410;                       //limit f=108 Mhz
-			encoder_reading_f = 100*(TIM3->CNT>>1);
+			encoder_reading_f = 10*(TIM3->CNT>>1);
 		}
 
 		if(encoder_reading_f != old_encoder_reading_f)
@@ -267,19 +293,25 @@ int main(void)
 			clear_rds_buffers(rdsProgramType,17);
 		    clear_rds_buffers(rdsProgramService, 9);
 		    clear_rds_buffers(rdsRadioText, 65);
+		    current_freq =  getFrequency();
 
-		   freq = 87500 + encoder_reading_f;
-	  	   REG_FREQ = freq;
-		   if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000))
-		   {
-			 Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
-			 MODF_FREQ = REG_FREQ;
-		   }
-            uint16_t freq_before_point = freq / 1000;
-            uint16_t freq_after_point = freq % 1000;
-            freq_after_point = freq_after_point / 100;
-		    sprintf(message_frequency, "Frecv = %i.%i MHz \r", freq_before_point, freq_after_point);
+
+		    freq = 8750 + encoder_reading_f;
+		    setFrequency(freq);
+		    current_freq =  getFrequency();
+		    sprintf(message_frequency, "Frecv = %lu MHz \r", current_freq);
 		    print_serial2_message(message_frequency);
+//	  	   REG_FREQ = freq;
+//		   if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000))
+//		   {
+//			 Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
+//			 MODF_FREQ = REG_FREQ;
+//		   }
+            //uint16_t freq_before_point = freq / 1000;
+            //uint16_t freq_after_point = freq % 1000;
+           // freq_after_point = freq_after_point / 100;
+		    //sprintf(message_frequency, "Frecv = %i.%i MHz \r", freq_before_point, freq_after_point);
+		    //print_serial2_message(message_frequency);
 		    clear_display();
 		    disp_freq(freq);
 		}
@@ -288,16 +320,10 @@ int main(void)
 		if(contor >= 70000)
 		{
 			contor = 0;
-			display_rds_info();
-			print_serial2_message("==================");
+			//display_rds_info();
+			//print_serial2_message("==================");
 			HAL_GPIO_TogglePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin);
 		}
-
-	  //display_rds_info();
-
-	  //HAL_Delay(500);
-	  //  HAL_GPIO_WritePin(HCMS_CE_LED_GPIO_Port, LED_HCMS_CE_LED_Pin, GPIO_PIN_RESET);
-	  //HAL_Delay(500);
 
   }
   /* USER CODE END 3 */
@@ -399,15 +425,15 @@ void disp_vol(uint32_t vol)  // 0-60
 }
 void disp_freq(uint32_t freq)
 {
-	if (freq >= 100000)
+	if (freq >= 10000)
 	{
-		uint16_t freq_0 = freq / 100000; // prima cifra
-		uint16_t f_0 = freq % 100000;
-		uint16_t freq_1 = f_0 / 10000;   // a doua cifra
-		uint16_t f_1 =  f_0 % 10000;
-		uint16_t freq_2 = f_1 / 1000;   // a treia cifra  (*cu punct jos)
-		uint16_t freq_3 = f_1 %  1000;
-		uint16_t freq_4 = freq_3 / 100;   // a patra cifra
+		uint16_t freq_0 = freq / 10000; // prima cifra
+		uint16_t f_0 = freq % 10000;
+		uint16_t freq_1 = f_0 / 1000;   // a doua cifra
+		uint16_t f_1 =  f_0 % 1000;
+		uint16_t freq_2 = f_1 / 100;   // a treia cifra  (*cu punct jos)
+		uint16_t freq_3 = f_1 %  100;
+		uint16_t freq_4 = freq_3 / 10;   // a patra cifra
 
 		writeDigitAscii(0, 'F', false);
 		writeDigitAscii(1, ' ', false);
@@ -419,11 +445,11 @@ void disp_freq(uint32_t freq)
 	}
 	else
 	{
-		uint16_t freq_0 = freq / 10000; // prima cifra
-		uint16_t f_0 = freq % 10000;
-		uint16_t freq_1 = f_0 / 1000;   // a doua cifra
-		uint16_t f_1 =  f_0 % 1000;
-		uint16_t freq_2 = f_1 / 100;   // a treia cifra  (*cu punct jos)
+		uint16_t freq_0 = freq / 1000; // prima cifra
+		uint16_t f_0 = freq % 1000;
+		uint16_t freq_1 = f_0 / 100;   // a doua cifra
+		uint16_t f_1 =  f_0 % 100;
+		uint16_t freq_2 = f_1 / 10;   // a treia cifra  (*cu punct jos)
 		//uint16_t freq_3 = f_1 % 100;   // a patra cifra
 
 		writeDigitAscii(0, 'F', false);

@@ -506,7 +506,7 @@ void setup()
   //Wire.begin();
   //Serial.begin(115200);
   //delay(40);
-  HAL_Delay(50);
+  HAL_Delay(100);
   int16_t uState;
   Get_Cmd(64, 128, &uState, 1);
   if (uState < 2)
@@ -516,7 +516,7 @@ void setup()
     Set_Cmd(64, 1, 1, 1);
   }
 
-  HAL_Delay(20); //TODO pe analizor nu apare ??
+  HAL_Delay(100); //TODO pe analizor nu apare ??
 //  if (AM_VOL_SCALE != -1)
 //  {
 //    int SetVolScale = map(AM_VOL_SCALE, 0, 100, -120, 60);
@@ -525,7 +525,7 @@ void setup()
 //
 
   // set volume
-    volume = 130;
+    volume = 70;
     Set_Cmd(48, 11, 1, 0);  //unmute
     int Setvolume = map(volume, 0, 100, -599, 50);
     Set_Cmd(48, 10, 1, Setvolume);

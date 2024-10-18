@@ -216,7 +216,7 @@ void begin_disp(uint8_t i2c_addr)
   //blinkRate(i2c_addr, HT16K33_BLINK_2HZ);
 
   //setBrightness(15); // max brightness
-  setBrightness(i2c_addr, 5); //
+  setBrightness(i2c_addr, 15); //
 }
 
 void writeDisplay(uint8_t i2c_addr)
