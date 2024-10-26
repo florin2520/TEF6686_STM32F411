@@ -69,7 +69,7 @@ void dsp_write_data(const uint8_t* data);
 //void get_RDS();
 void serial_hex(uint8_t val);
 long map(long x, long in_min, long in_max, long out_min, long out_max);
-void setup();
+void setup_radio();
 int bitRead(char bit, uint16_t number);
 
 uint8_t readRDS();

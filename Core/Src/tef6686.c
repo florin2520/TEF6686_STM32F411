@@ -223,7 +223,8 @@ static uint8_t CheckIfStep;
 /*current radio  band*/
 uint8_t Radio_CurrentBand;
 /*current radio  freqency*/
-uint16_t Radio_CurrentFreq;
+//uint16_t Radio_CurrentFreq;
+uint32_t Radio_CurrentFreq;
 /*current radio  station*/
 uint8_t Radio_CurrentStation;
 
@@ -501,12 +502,12 @@ void Set_Deempasis(uint8_t val)
   }
 }
 
-void setup()
+void setup_radio()
 {
   //Wire.begin();
   //Serial.begin(115200);
   //delay(40);
-  HAL_Delay(100);
+  HAL_Delay(60);
   int16_t uState;
   Get_Cmd(64, 128, &uState, 1);
   if (uState < 2)
@@ -532,16 +533,17 @@ void setup()
 
   // set freq
     //MODF_FREQ = 104500;
-    //MODF_FREQ = 88700;
+    MODF_FREQ = 88700;
     //MODF_FREQ = 103600;
     //MODF_FREQ = 98000;
     //MODF_FREQ = 90600;
-    //Set_Cmd(32, 1, 2, 1, MODF_FREQ / 10);
+    Set_Cmd(32, 1, 2, 1, MODF_FREQ / 10);
+    //setFrequency(8870);
 
-   // if (Filter_FM == 16) {Filter_FM = -1;}
-   // current_filter = Filter_FM;
+    if (Filter_FM == 16) {Filter_FM = -1;}
+    current_filter = Filter_FM;
     //Set_Cmd(32, 10, 4, current_filter == -1 ? 1 : 0, pgm_read_word_near(FMFilterMap + current_filter), 1000, 1000);
-   // Set_Cmd(32, 10, 4, current_filter == -1 ? 1 : 0, pgm_read_word(FMFilterMap + current_filter), 1000, 1000);
+    Set_Cmd(32, 10, 4, current_filter == -1 ? 1 : 0, pgm_read_word(FMFilterMap + current_filter), 1000, 1000);
 }
 
 //void loop()
@@ -1596,31 +1598,35 @@ typedef struct{
 //#define TEF668x_CMD_LEN_MAX	20
 #define TEF668x_CMD_LEN_MAX	31
 
+//Set_Cmd(32, 1, 2, 1, MODF_FREQ / 10);
 uint16_t devTEF668x_Set_Cmd(TEF668x_MODULE module, uint8_t cmd, uint16_t len,...)
 {
-	uint16_t i;
+	//uint16_t i;
 	uint8_t buf[TEF668x_CMD_LEN_MAX];
-	uint16_t temp;
+	//uint16_t temp;
+	uint32_t temp;
     va_list vArgs;
-
     va_start(vArgs, len);
-
 	buf[0]= module;			//module,		FM/AM/APP
 	buf[1]= cmd;		//cmd,		1,2,10,...
 	buf[2]= 1;	//index, 		always 1
 
 //fill buffer with 16bits one by one
-	for(i=3;i<len;i++)
+	for (uint8_t i = 0; i < len; i++)
 	{
-		temp = va_arg(vArgs,int);	//the size only uint16_t valid for compile
-
-		buf[i++]=High_16bto8b(temp);
-		buf[i]=Low_16bto8b(temp);
+//		temp = va_arg(vArgs,int);	//the size only uint16_t valid for compile
+//
+//		buf[i++]=High_16bto8b(temp);
+//		buf[i]=Low_16bto8b(temp);
+		temp = va_arg(vArgs, uint32_t);
+	    buf[3 + i * 2] = (uint8_t)(temp >> 8);
+	    buf[4 + i * 2] = (uint8_t)temp;
 	}
-
 	va_end(vArgs);
 
-	return Tuner_WriteBuffer(buf, len);
+	//return Tuner_WriteBuffer(buf, len);
+	return Tuner_WriteBuffer(buf, len * 2 + 3);
+
 
 
 
@@ -1669,8 +1675,8 @@ static uint16_t devTEF668x_Get_Cmd(TEF668x_MODULE module, uint8_t cmd, uint8_t *
 	    uint16_t newval = (uint8_t)(receive[i] >> 8) | (((uint8_t)(receive[i])) << 8);
 	    receive[i] = newval;
 	  }
-
-	  return 0;  // no error
+	  return Tuner_ReadBuffer(receive,len);
+	 // return 0;  // no error
 }
 
 /*
@@ -1704,9 +1710,14 @@ index
 */
 uint16_t devTEF668x_Radio_Tune_To (uint8_t fm,uint16_t mode,uint16_t frequency )
 {
+//	return devTEF668x_Set_Cmd(fm ? TEF665X_MODULE_FM: TEF665X_MODULE_AM,
+//			TEF665X_Cmd_Tune_To,
+//			(mode<=5)? 7 : 5,
+//			mode, frequency);
+
 	return devTEF668x_Set_Cmd(fm ? TEF665X_MODULE_FM: TEF665X_MODULE_AM,
 			TEF665X_Cmd_Tune_To,
-			(mode<=5)? 7 : 5,
+			              2,
 			mode, frequency);
 }
 

@@ -62,7 +62,7 @@
 extern struct RdsInfo rdsInfo;
 extern uint8_t isRDSReady;
 uint32_t contor;
-
+extern uint32_t Radio_CurrentFreq;
 volatile bool seek_up;
 volatile bool seek_down;
 //char *start_radio = "Start radio...\n\r";
@@ -73,7 +73,7 @@ char message_volume[26];
 extern int16_t volume;
 extern uint32_t freq;
 
-uint32_t current_freq;  // todo local
+//uint32_t current_freq;  // todo local
 
 extern uint32_t REG_FREQ;
 extern uint32_t MODA_FREQ;
@@ -163,7 +163,7 @@ int main(void)
   HAL_GPIO_WritePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin, GPIO_PIN_RESET);
 
   //start radio
-  setup();
+  setup_radio();
   //printf("Start radio\n");
   //get_RDS();
   //char *str1 = "Start radio...\n\r";
@@ -185,9 +185,9 @@ int main(void)
 	writeDisplay(DISPLAY_ADDRESS);
 	HAL_Delay(1500);
 	clear_display();
-	setFrequency(8750);
-    current_freq =  getFrequency();
-    sprintf(message_frequency, "Frecv = %lu MHz \r", current_freq);
+	setFrequency(10760);
+	uint16_t current_freq =  getFrequency();
+    sprintf(message_frequency, "curentFrecv = %lu MHz \r", current_freq);
     print_serial2_message(message_frequency);
   // set volume
 //    volume = 80;
@@ -205,7 +205,7 @@ int main(void)
 
 
       // IF Button seek up Is Pressed
-      if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_14) == 0)  // seek up
+      if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_14) == 0)  // seek up  butonul de freq
       {
     	    clear_display();
     	   	writeDigitAscii(0, 'S', false);
@@ -217,19 +217,23 @@ int main(void)
     	    writeDigitAscii(6, 'P', false);
     	    writeDisplay(DISPLAY_ADDRESS);
 
-    	    //tuneUp();
-    	    //seek_frequency = seekUp();
-		    //sprintf(message_frequency, "seek_frequency %i\r", seek_frequency);
-		    //print_serial2_message(message_frequency);
-    	    setFrequency(10290);
-    	    freq =  getFrequency();
-    	    TIM3->CNT = 1;
-    	    //uint16_t current_freq =  getFrequency();
-    	    //sprintf(message_frequency, "current_freq %i\r", current_freq);
-    	    //print_serial2_message(message_frequency);
+    	    seek_frequency = seekUp();
+		    sprintf(message_frequency, "seek_frequency = %i\r", seek_frequency);
+		    print_serial2_message(message_frequency);
+    	    //setFrequency(10290);
+
+
+//    	    TIM3->CNT = 1;
+//    		setFrequency(10290);
+//    		uint16_t current_freq =  getFrequency();
+//    	    sprintf(message_frequency, "curentFrecv = %lu MHz \r", current_freq);
+//    	    print_serial2_message(message_frequency);
+
+//    	    sprintf(message_frequency, "current_freq %i\r", current_freq);
+//    	    print_serial2_message(message_frequency);
       }
       // IF Button seek down Is Pressed
-      if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_15) == 0)  // seek down
+      if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_15) == 0)  // seek down   butonul de volum
       {
 			clear_display();
 			writeDigitAscii(0, 'S', false);
@@ -242,13 +246,20 @@ int main(void)
 			writeDigitAscii(7, 'W', false);
 			writeDisplay(DISPLAY_ADDRESS);
 
-    	    setFrequency(10450);
-    	    freq =  getFrequency();
+    	   // set_freq(104500);
+    	    //freq =  get_freq();
     	    TIM3->CNT = 1;
+    		setFrequency(10450);
+    		uint16_t current_freq =  getFrequency();
+    	    sprintf(message_frequency, "curentFrecv = %i MHz \r", current_freq);
+    	    print_serial2_message(message_frequency);
 			//tuneDown();
 			//seek_frequency = seekDown();
 		    //sprintf(message_frequency, "seek_frequency %i\r", seek_frequency);
-		    //print_serial2_message(message_frequency);
+		    //print_serial2_message(message_frequency)
+//    	    uint16_t current_freq =  get_freq();
+//    	    sprintf(message_frequency, "current_freq %i\r", current_freq);
+//    	    print_serial2_message(message_frequency);
       }
 
 		encoder_reading_v = (TIM2->CNT>>1) + 30;
@@ -276,7 +287,7 @@ int main(void)
 
 
 		encoder_reading_f = 10*(TIM3->CNT>>1);
-		if (encoder_reading_f > 30000)
+		if (encoder_reading_f > 5000)
 		{
 			TIM3->CNT = 1;                         //limit f=87.5 Mhz
 			encoder_reading_f = 10*(TIM3->CNT>>1);
@@ -293,13 +304,13 @@ int main(void)
 			clear_rds_buffers(rdsProgramType,17);
 		    clear_rds_buffers(rdsProgramService, 9);
 		    clear_rds_buffers(rdsRadioText, 65);
-		    current_freq =  getFrequency();
+		    //uint16_t current_freq =  get_freq();
 
 
 		    freq = 8750 + encoder_reading_f;
-		    setFrequency(freq);
-		    current_freq =  getFrequency();
-		    sprintf(message_frequency, "Frecv = %lu MHz \r", current_freq);
+			setFrequency(freq);
+		    uint16_t current_freq = getFrequency();
+		    sprintf(message_frequency, "Frecv = %i MHz \r", current_freq);
 		    print_serial2_message(message_frequency);
 //	  	   REG_FREQ = freq;
 //		   if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000))
@@ -547,6 +558,8 @@ void populate_freq_array(uint16_t freq)
 	message_freq_static[11] = ' ';
 
 }
+
+
 /* USER CODE END 4 */
 
 /**
