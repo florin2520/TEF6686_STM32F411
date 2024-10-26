@@ -37,7 +37,7 @@ void blinkRate(uint8_t i2c_addr, uint8_t b);
 void writeDisplay(uint8_t i2c_addr);
 void clear_display(void);
 //uint16_t displaybuffer[8];
-void init(uint8_t a);
+void init_display(uint8_t a);
 
 void writeDigitRaw(uint8_t n, uint16_t bitmask);
 void writeDigitAscii(uint8_t n, uint8_t ascii, bool dot);

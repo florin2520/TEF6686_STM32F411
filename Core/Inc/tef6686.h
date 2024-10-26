@@ -550,4 +550,16 @@ unsigned char Tuner_ReadBuffer(uint8_t *buf, uint16_t len);
 
 void setFrequency(uint16_t frequency);    // frequency as int, i.e. 100.00 as 10000
 uint16_t getFrequency();                  // returns the current frequency
+uint8_t init_radio();
+void powerOn();
+void powerOff();
+void setVolume(uint16_t volume);
+void setMute();
+void setUnMute();
+
+static uint16_t Tuner_Patch_Load(const unsigned char * pLutBytes, uint16_t size);
+static uint16_t Tuner_Table_Write(const unsigned char * tab);
+uint16_t Tuner_Init(void);
+void Tuner_WaitMs (uint16_t ms);
+
 #endif /* INC_TEF6686_H_ */

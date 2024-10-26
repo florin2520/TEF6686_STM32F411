@@ -162,13 +162,25 @@ int main(void)
 
   HAL_GPIO_WritePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin, GPIO_PIN_RESET);
 
-  //start radio
-  setup_radio();
+
   //printf("Start radio\n");
   //get_RDS();
   //char *str1 = "Start radio...\n\r";
   //HAL_UART_Transmit(&huart2, (uint8_t *)str1, strlen (str1), HAL_MAX_DELAY);
   print_serial2_message("Start radio...");
+  //start radio
+  uint8_t start_rd_ok = init_radio();
+  powerOn();
+  setFrequency(8870);
+  setVolume(-10);// -60 --> 24
+
+  sprintf(message_frequency, "START RD CODE = %i \r", start_rd_ok); // 1 = OK, 2 = Doesn't exist, 0 = busy
+  print_serial2_message(message_frequency);
+
+  uint16_t current_freq = getFrequency();
+  sprintf(message_frequency, "curentFrecv = %i MHz \r", current_freq);
+  print_serial2_message(message_frequency);
+
   HAL_Delay(500);
   HAL_GPIO_WritePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin, GPIO_PIN_SET);
 
@@ -185,10 +197,8 @@ int main(void)
 	writeDisplay(DISPLAY_ADDRESS);
 	HAL_Delay(1500);
 	clear_display();
-	setFrequency(10760);
-	uint16_t current_freq =  getFrequency();
-    sprintf(message_frequency, "curentFrecv = %lu MHz \r", current_freq);
-    print_serial2_message(message_frequency);
+	//setFrequency(10760);
+
   // set volume
 //    volume = 80;
 //    Set_Cmd(48, 11, 1, 0);  //unmute
@@ -262,25 +272,27 @@ int main(void)
 //    	    print_serial2_message(message_frequency);
       }
 
-		encoder_reading_v = (TIM2->CNT>>1) + 30;
-		if (encoder_reading_v < 30)
+		encoder_reading_v = (TIM2->CNT>>1);
+		if (encoder_reading_v > 900)
 		{
 			TIM2->CNT = 1;                         //limit vol 0
-			encoder_reading_v = (TIM2->CNT>>1) + 30;
+			encoder_reading_v = (TIM2->CNT>>1);
 		}
-		if (encoder_reading_v > 90)
+		if (encoder_reading_v > 30)
 		{
-			TIM2->CNT = 120;                         //limit vol 60
-			encoder_reading_v = (TIM2->CNT>>1) + 30;
+			TIM2->CNT = 60;                         //limit vol = 30
+			encoder_reading_v = (TIM2->CNT>>1);
 		}
+
 		if(encoder_reading_v != old_encoder_reading_v)
 		{
-		   volume = map(encoder_reading_v, 0, 100, -599, 50);
-		   Set_Cmd(48, 10, 1, volume);
-		   sprintf(message_volume, "Vol = %i  \r", encoder_reading_v - 30);
+		 // map(value, fromLow, fromHigh, toLow, toHigh)
+		   int vol = map(encoder_reading_v, 0, 30, -40, 15);
+		   setVolume(vol);
+		   sprintf(message_volume, "Vol = %i  \r", vol);
 		   print_serial2_message(message_volume);
 		   clear_display();
-		   disp_vol(encoder_reading_v - 30);
+		   disp_vol(encoder_reading_v);
 		}
 		old_encoder_reading_v = encoder_reading_v;
 
