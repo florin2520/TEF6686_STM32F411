@@ -1210,7 +1210,7 @@ uint16_t seekSync(uint8_t up) {
 
     case 40:
       if (Radio_CheckStationStatus() == NO_STATION) {
-        seekMode = (seekStartFrequency == Radio_GetCurrentFreq()) ? 50 : 20; /////////////// problema
+        seekMode = (seekStartFrequency == Radio_GetCurrentFreq()) ? 50 : 20;
       }
       else if (Radio_CheckStationStatus() == PRESENT_STATION) {
         seekMode = 50;
@@ -1374,19 +1374,19 @@ void Radio_SetFreq(uint8_t mode,uint8_t Band,uint16_t Freq)
 
 		switch(mode){
 			case Radio_PRESETMODE:
-				A2Mode = eAR_TuningAction_Preset;
+				A2Mode = eAR_TuningAction_Preset;  /*!< Tune to new program with short mute time */
 				break;
 			case Radio_SEARCHMODE:
-				A2Mode = eAR_TuningAction_Search;
+				A2Mode = eAR_TuningAction_Search;  /*!< Tune to new program and stay muted */
 				break;
 			case Radio_AFUPDATEMODE:
-				A2Mode = eAR_TuningAction_AF_Update;
+				A2Mode = eAR_TuningAction_AF_Update; /*!< Tune to alternative frequency, store quality and tune back with inaudible mute */
 				break;
 			case Radio_JUMPMODE:
-				A2Mode = eAR_TuningAction_Jump;
+				A2Mode = eAR_TuningAction_Jump;  /*!< Tune to alternative frequency with short inaudible mute  */
 				break;
 			case Radio_CHECKMODE:
-				A2Mode = eAR_TuningAction_Check;
+				A2Mode = eAR_TuningAction_Check; /*!< Tune to alternative frequency and stay muted */
 				break;
 		}
         devTEF668x_Radio_Tune_To(TEF665X_Is_FM_Freq(Freq), (uint16_t)A2Mode, Freq);
@@ -1608,56 +1608,17 @@ uint16_t devTEF668x_Set_Cmd(TEF668x_MODULE module, uint8_t cmd, uint16_t len,...
 	//return Tuner_WriteBuffer(buf, len);
 	return Tuner_WriteBuffer(buf, len * 2 + 3);
 
-
-
-
-//	  uint8_t buf[31];
-//	  //uint16_t temp;
-//	  uint32_t temp;
-//	  va_list vArgs;
-//	  va_start(vArgs, len);
-//	  buf[0] = module;
-//	  buf[1] = cmd;
-//	  buf[2] = 1;
-//	  for (uint8_t i = 0; i < len; i++)
-//	  {
-//	    //temp = va_arg(vArgs, uint16_t);
-//		//temp = va_arg(vArgs, int);
-//		temp = va_arg(vArgs, uint32_t);
-//	    buf[3 + i * 2] = (uint8_t)(temp >> 8);
-//	    buf[4 + i * 2] = (uint8_t)temp;
-//	  }
-//	  va_end(vArgs);
-//	  Write(buf, len * 2 + 3);
-//	  return 0;  // no error
 }
 
 // todo de verificat
 static uint16_t devTEF668x_Get_Cmd(TEF668x_MODULE module, uint8_t cmd, uint8_t *receive,uint16_t len)
 {
-//	uint8_t buf[3];
-//
-//	buf[0]= module;			//module,		FM/AM/APP
-//	buf[1]= cmd;		//cmd,		1,2,10,...
-//	buf[2]= 1;	//index, 		always 1
-//
-//	Tuner_WriteBuffer(buf, 3);
-//
-//	return Tuner_ReadBuffer(receive,len);
-
 	  uint8_t buf[3];
 	  buf[0] = module; 	    //module,		FM/AM/APP
 	  buf[1] = cmd;      	//cmd,		    1,2,10,...
 	  buf[2] = 1;          	//index, 		always 1
 	  //Write(buf, 3);
 	  Tuner_WriteBuffer(buf, 3);
-	  //Read((uint8_t*)receive, 2 * len);
-//	  Tuner_ReadBuffer(receive, 2 * len);
-//	  for (uint8_t i = 0; i < len; i++)
-//	  {
-//	    uint16_t newval = (uint8_t)(receive[i] >> 8) | (((uint8_t)(receive[i])) << 8);
-//	    receive[i] = newval;
-//	  }
 	  return Tuner_ReadBuffer(receive,len);
 	 // return 0;  // no error
 }
@@ -1693,15 +1654,15 @@ index
 */
 uint16_t devTEF668x_Radio_Tune_To (uint8_t fm,uint16_t mode,uint16_t frequency )
 {
-//	return devTEF668x_Set_Cmd(fm ? TEF665X_MODULE_FM: TEF665X_MODULE_AM,
-//			TEF665X_Cmd_Tune_To,
-//			(mode<=5)? 7 : 5,
-//			mode, frequency);
-
 	return devTEF668x_Set_Cmd(fm ? TEF665X_MODULE_FM: TEF665X_MODULE_AM,
 			TEF665X_Cmd_Tune_To,
-			              2,
+			(mode<=5)? 7 : 5,
 			mode, frequency);
+
+//	return devTEF668x_Set_Cmd(fm ? TEF665X_MODULE_FM: TEF665X_MODULE_AM,
+//			TEF665X_Cmd_Tune_To,
+//			              2,
+//			mode, frequency);
 }
 
 /*
@@ -3962,4 +3923,15 @@ static int Radio_Get_Data(uint8_t fm, uint8_t *usn, uint8_t *wam, uint16_t *offs
 	}
 
 	return 0;
+}
+
+/*-----------------------------------------------------------------------
+Function name:	Radio_SetBand
+Input:			Band
+Output:
+Description:	 set band
+------------------------------------------------------------------------*/
+void Radio_SetBand(uint8_t Band)
+{
+	Radio_SetFreq(Radio_PRESETMODE,Band,StationRecord[Band].Freq[0]);
 }

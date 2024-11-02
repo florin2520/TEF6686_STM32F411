@@ -100,6 +100,8 @@ char message_freq_static[13];
 uint16_t seek_frequency;
 bool isFmSeekMode;
 bool isFmSeekUp;
+uint8_t current_band;
+uint8_t stereo_status; //0 mono, 1 stereo
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -172,9 +174,11 @@ int main(void)
   //start radio
   uint8_t start_rd_ok = init_radio();
   powerOn();
+
+  Radio_SetBand(FM1_BAND); // ??
+  current_band = Radio_GetCurrentBand(); // 1 => 65-108
   setFrequency(8870);
   setVolume(-10);// -60 --> 24
-
   sprintf(message_frequency, "START RADIO CODE = %i \r", start_rd_ok); // 1 = OK, 2 = Doesn't exist, 0 = busy
   print_serial2_message(message_frequency);
 
@@ -207,69 +211,39 @@ int main(void)
       contor++;
       //print_serial2_message_number("contor = ", contor);
       showFmSeek();
-
+      stereo_status = getStereoStatus();
       // IF Button seek up Is Pressed
       if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_14) == 0)  // seek up  butonul de freq
       {
     	    clear_display();
     	   	writeDigitAscii(0, 'S', false);
     	    writeDigitAscii(1, 'E', false);
-    	    writeDigitAscii(2, 'E', false);
-    	    writeDigitAscii(3, 'K', false);
-    	    writeDigitAscii(4, ' ', false);
-    	    writeDigitAscii(5, 'U', false);
-    	    writeDigitAscii(6, 'P', false);
+    	    writeDigitAscii(2, 'A', false);
+    	    writeDigitAscii(3, 'R', false);
+    	    writeDigitAscii(4, 'C', false);
+    	    writeDigitAscii(5, 'H', false);
+    	    writeDigitAscii(6, '>', false);
+    	    writeDigitAscii(7, '>', false);
     	    writeDisplay(DISPLAY_ADDRESS);
     	    isFmSeekMode = true;
     	    isFmSeekUp = true;
-    	    //seek_frequency = seekUp();
-		    //sprintf(message_frequency, "seek_frequency = %i\r", seek_frequency);
-		    //print_serial2_message(message_frequency);
-    	    //setFrequency(10290);
-
-
-//    	    TIM3->CNT = 1;
-//    		setFrequency(10290);
-//    		uint16_t current_freq =  getFrequency();
-//    	    sprintf(message_frequency, "curentFrecv = %lu MHz \r", current_freq);
-//    	    print_serial2_message(message_frequency);
-
-//    	    sprintf(message_frequency, "current_freq %i\r", current_freq);
-//    	    print_serial2_message(message_frequency);
       }
-
 
       // IF Button seek down Is Pressed
       if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_15) == 0)  // seek down   butonul de volum
       {
 			clear_display();
-			writeDigitAscii(0, 'S', false);
-			writeDigitAscii(1, 'E', false);
-			writeDigitAscii(2, 'E', false);
-			writeDigitAscii(3, 'K', false);
-			writeDigitAscii(4, ' ', false);
-			writeDigitAscii(5, 'D', false);
-			writeDigitAscii(6, 'O', false);
-			writeDigitAscii(7, 'W', false);
+			writeDigitAscii(0, '<', false);
+			writeDigitAscii(1, '<', false);
+			writeDigitAscii(2, 'S', false);
+			writeDigitAscii(3, 'E', false);
+			writeDigitAscii(4, 'A', false);
+			writeDigitAscii(5, 'R', false);
+			writeDigitAscii(6, 'C', false);
+			writeDigitAscii(7, 'H', false);
 			writeDisplay(DISPLAY_ADDRESS);
   	        isFmSeekMode = true;
   	        isFmSeekUp = false;
-    	   // set_freq(104500);
-    	    //freq =  get_freq();
-//    	    TIM3->CNT = 1;
-//    		setFrequency(10450);
-//    		uint16_t current_freq =  getFrequency();
-//    	    sprintf(message_frequency, "curentFrecv = %i MHz \r", current_freq);
-//    	    print_serial2_message(message_frequency);
-//		    clear_display();
-//		    disp_freq(current_freq);
-			//tuneDown();
-			//seek_frequency = seekDown();
-		    //sprintf(message_frequency, "seek_frequency %i\r", seek_frequency);
-		    //print_serial2_message(message_frequency)
-//    	    uint16_t current_freq =  get_freq();
-//    	    sprintf(message_frequency, "current_freq %i\r", current_freq);
-//    	    print_serial2_message(message_frequency);
       }
 
 		encoder_reading_v = (TIM2->CNT>>1);
@@ -283,7 +257,6 @@ int main(void)
 			TIM2->CNT = 60;                         //limit vol = 30
 			encoder_reading_v = (TIM2->CNT>>1);
 		}
-
 		if(encoder_reading_v != old_encoder_reading_v)
 		{
 		 // map(value, fromLow, fromHigh, toLow, toHigh)
@@ -298,41 +271,28 @@ int main(void)
 
 
 
+
 		encoder_reading_f = 10*(TIM3->CNT>>1);
 		if (encoder_reading_f > 5000)
 		{
 			TIM3->CNT = 1;                         //limit f=87.5 Mhz
 			encoder_reading_f = 10*(TIM3->CNT>>1);
 		}
-
 		if (encoder_reading_f > 2050)
 		{
 			TIM3->CNT = 410;                       //limit f=108 Mhz
 			encoder_reading_f = 10*(TIM3->CNT>>1);
 		}
-
 		if(encoder_reading_f != old_encoder_reading_f)
 		{
 			clear_rds_buffers(rdsProgramType,17);
 		    clear_rds_buffers(rdsProgramService, 9);
 		    clear_rds_buffers(rdsRadioText, 65);
-		    //uint16_t current_freq =  get_freq();
+
 		    freq = 8750 + encoder_reading_f;
 			setFrequency(freq);
-		    uint16_t current_freq = getFrequency();
-		    sprintf(message_frequency, "Frecv = %i MHz \r", current_freq);
+		    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
 		    print_serial2_message(message_frequency);
-//	  	   REG_FREQ = freq;
-//		   if ((REG_FREQ >= 65000) && (REG_FREQ <= 108000))
-//		   {
-//			 Set_Cmd(32, 1, 2, 1, REG_FREQ / 10);
-//			 MODF_FREQ = REG_FREQ;
-//		   }
-            //uint16_t freq_before_point = freq / 1000;
-            //uint16_t freq_after_point = freq % 1000;
-           // freq_after_point = freq_after_point / 100;
-		    //sprintf(message_frequency, "Frecv = %i.%i MHz \r", freq_before_point, freq_after_point);
-		    //print_serial2_message(message_frequency);
 		    clear_display();
 		    disp_freq(freq);
 		}
@@ -570,19 +530,19 @@ void populate_freq_array(uint16_t freq)
 }
 
 void showFmSeek() {
+	uint16_t current_freq;
   if (isFmSeekMode) {
     if (seekSync(isFmSeekUp)) {
       isFmSeekMode = false;
-      //Serial.println("Seek stopped");
       print_serial2_message("Seek stopped");
-      //frequency = getFrequency();
-      //displayInfo();
-      uint16_t current_freq = getFrequency();
+      current_freq = getFrequency();
+      TIM3->CNT = ((current_freq - 8750)/10)<<1;
 	  clear_display();
 	  disp_freq(current_freq);
       sprintf(message_frequency, "curentFrecv = %i MHz \r", current_freq);
       print_serial2_message(message_frequency);
     }
+
   }
 }
 /* USER CODE END 4 */
