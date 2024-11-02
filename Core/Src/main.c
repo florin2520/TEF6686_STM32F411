@@ -98,7 +98,8 @@ char display_buffer[] = "        "; // 8 caractere
 char message_freq_static[13];
 
 uint16_t seek_frequency;
-
+bool isFmSeekMode;
+bool isFmSeekUp;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -174,7 +175,7 @@ int main(void)
   setFrequency(8870);
   setVolume(-10);// -60 --> 24
 
-  sprintf(message_frequency, "START RD CODE = %i \r", start_rd_ok); // 1 = OK, 2 = Doesn't exist, 0 = busy
+  sprintf(message_frequency, "START RADIO CODE = %i \r", start_rd_ok); // 1 = OK, 2 = Doesn't exist, 0 = busy
   print_serial2_message(message_frequency);
 
   uint16_t current_freq = getFrequency();
@@ -198,13 +199,6 @@ int main(void)
 	HAL_Delay(1500);
 	clear_display();
 	//setFrequency(10760);
-
-  // set volume
-//    volume = 80;
-//    Set_Cmd(48, 11, 1, 0);  //unmute
-//    int Setvolume = map(volume, 0, 100, -599, 50);
-//    Set_Cmd(48, 10, 1, Setvolume);
-
   while (1)
   {
     /* USER CODE END WHILE */
@@ -212,7 +206,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
       contor++;
       //print_serial2_message_number("contor = ", contor);
-
+      showFmSeek();
 
       // IF Button seek up Is Pressed
       if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_14) == 0)  // seek up  butonul de freq
@@ -226,10 +220,11 @@ int main(void)
     	    writeDigitAscii(5, 'U', false);
     	    writeDigitAscii(6, 'P', false);
     	    writeDisplay(DISPLAY_ADDRESS);
-
-    	    seek_frequency = seekUp();
-		    sprintf(message_frequency, "seek_frequency = %i\r", seek_frequency);
-		    print_serial2_message(message_frequency);
+    	    isFmSeekMode = true;
+    	    isFmSeekUp = true;
+    	    //seek_frequency = seekUp();
+		    //sprintf(message_frequency, "seek_frequency = %i\r", seek_frequency);
+		    //print_serial2_message(message_frequency);
     	    //setFrequency(10290);
 
 
@@ -242,6 +237,8 @@ int main(void)
 //    	    sprintf(message_frequency, "current_freq %i\r", current_freq);
 //    	    print_serial2_message(message_frequency);
       }
+
+
       // IF Button seek down Is Pressed
       if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_15) == 0)  // seek down   butonul de volum
       {
@@ -255,14 +252,17 @@ int main(void)
 			writeDigitAscii(6, 'O', false);
 			writeDigitAscii(7, 'W', false);
 			writeDisplay(DISPLAY_ADDRESS);
-
+  	        isFmSeekMode = true;
+  	        isFmSeekUp = false;
     	   // set_freq(104500);
     	    //freq =  get_freq();
-    	    TIM3->CNT = 1;
-    		setFrequency(10450);
-    		uint16_t current_freq =  getFrequency();
-    	    sprintf(message_frequency, "curentFrecv = %i MHz \r", current_freq);
-    	    print_serial2_message(message_frequency);
+//    	    TIM3->CNT = 1;
+//    		setFrequency(10450);
+//    		uint16_t current_freq =  getFrequency();
+//    	    sprintf(message_frequency, "curentFrecv = %i MHz \r", current_freq);
+//    	    print_serial2_message(message_frequency);
+//		    clear_display();
+//		    disp_freq(current_freq);
 			//tuneDown();
 			//seek_frequency = seekDown();
 		    //sprintf(message_frequency, "seek_frequency %i\r", seek_frequency);
@@ -317,8 +317,6 @@ int main(void)
 		    clear_rds_buffers(rdsProgramService, 9);
 		    clear_rds_buffers(rdsRadioText, 65);
 		    //uint16_t current_freq =  get_freq();
-
-
 		    freq = 8750 + encoder_reading_f;
 			setFrequency(freq);
 		    uint16_t current_freq = getFrequency();
@@ -571,7 +569,22 @@ void populate_freq_array(uint16_t freq)
 
 }
 
-
+void showFmSeek() {
+  if (isFmSeekMode) {
+    if (seekSync(isFmSeekUp)) {
+      isFmSeekMode = false;
+      //Serial.println("Seek stopped");
+      print_serial2_message("Seek stopped");
+      //frequency = getFrequency();
+      //displayInfo();
+      uint16_t current_freq = getFrequency();
+	  clear_display();
+	  disp_freq(current_freq);
+      sprintf(message_frequency, "curentFrecv = %i MHz \r", current_freq);
+      print_serial2_message(message_frequency);
+    }
+  }
+}
 /* USER CODE END 4 */
 
 /**

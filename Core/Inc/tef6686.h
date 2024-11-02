@@ -257,6 +257,10 @@ extern uint32_t Radio_GetFreqStep(uint8_t band);
 extern void Radio_ChangeFreqOneStep(uint8_t UpDown);
 extern uint16_t Radio_GetCurrentFreq(void);
 
+uint16_t getLevel();
+uint8_t getStereoStatus();
+
+
 
 /*check station */
 extern void Radio_CheckStation(void);
@@ -269,7 +273,7 @@ uint16_t Radio_Get_Level(uint8_t fm);
 uint8_t Radio_Is_AF_Update_Available (void);
 uint8_t Radio_Is_RDAV_Available (void);
 uint16_t Radio_Get_RDS_Data(uint32_t*rds_data);
-static int Radio_Get_Data(uint8_t fm, uint8_t *usn, uint8_t *wam, uint16_t *offset);
+//static int Radio_Get_Data(uint8_t fm, uint8_t *usn, uint8_t *wam, uint16_t *offset);
 
 #define TEF665X_FM_FREQUENCY_MIN	6500		//step 10kHz
 #define TEF665X_FM_FREQUENCY_MAX	10800
@@ -522,6 +526,7 @@ typedef enum
 
 
 uint16_t devTEF668x_Set_Cmd(TEF668x_MODULE module, uint8_t cmd, uint16_t len,...);
+static uint16_t devTEF668x_Get_Cmd(TEF668x_MODULE module, uint8_t cmd, uint8_t *receive,uint16_t len);
 
 uint16_t devTEF668x_Radio_Tune_To (uint8_t fm,uint16_t mode,uint16_t frequency );
 uint16_t devTEF668x_Radio_Get_Quality_Status (uint8_t fm,uint8_t *status);
@@ -561,5 +566,6 @@ static uint16_t Tuner_Patch_Load(const unsigned char * pLutBytes, uint16_t size)
 static uint16_t Tuner_Table_Write(const unsigned char * tab);
 uint16_t Tuner_Init(void);
 void Tuner_WaitMs (uint16_t ms);
+static int Radio_Get_Data(uint8_t fm, uint8_t *usn, uint8_t *wam, uint16_t *offset);
 
 #endif /* INC_TEF6686_H_ */

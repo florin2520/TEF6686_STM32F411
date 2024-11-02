@@ -1210,7 +1210,7 @@ uint16_t seekSync(uint8_t up) {
 
     case 40:
       if (Radio_CheckStationStatus() == NO_STATION) {
-        seekMode = (seekStartFrequency == Radio_GetCurrentFreq()) ? 50 : 20;
+        seekMode = (seekStartFrequency == Radio_GetCurrentFreq()) ? 50 : 20; /////////////// problema
       }
       else if (Radio_CheckStationStatus() == PRESENT_STATION) {
         seekMode = 50;
@@ -1539,25 +1539,6 @@ uint16_t Radio_Get_Level(uint8_t fm)
 	return -255;
 }
 
-// status =  0.1  32 ms
-// level = -20 ... 120 dBuV
-// usn = 0  100%
-// wam = 0  100%
-//offset = -1200  1200 (*0.1 kHz) = -120 kHz ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ 120 kHz
-//bandwidth = FM, 560  3110 [*0.1 kHz]  AM 30 ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ 80 [*0.1 kHz]
-// modulation = 0  100%
-static int Radio_Get_Data(uint8_t fm, uint8_t *usn, uint8_t *wam, uint16_t *offset)
-{
-	if(Is_Radio_Atomic2||Is_Radio_Lithio)
-	{
-		if(1 == devTEF668x_Radio_Get_Quality_Data (fm,usn,wam,offset))
-		{
-			return 1;
-		}
-	}
-
-	return 0;
-}
 
 
 
@@ -1603,7 +1584,7 @@ uint16_t devTEF668x_Set_Cmd(TEF668x_MODULE module, uint8_t cmd, uint16_t len,...
 {
 	//uint16_t i;
 	uint8_t buf[TEF668x_CMD_LEN_MAX];
-	//uint16_t temp;
+	//uint16_t temp; // nu merge
 	uint32_t temp;
     va_list vArgs;
     va_start(vArgs, len);
@@ -1651,7 +1632,7 @@ uint16_t devTEF668x_Set_Cmd(TEF668x_MODULE module, uint8_t cmd, uint16_t len,...
 //	  return 0;  // no error
 }
 
-
+// todo de verificat
 static uint16_t devTEF668x_Get_Cmd(TEF668x_MODULE module, uint8_t cmd, uint8_t *receive,uint16_t len)
 {
 //	uint8_t buf[3];
@@ -1665,16 +1646,18 @@ static uint16_t devTEF668x_Get_Cmd(TEF668x_MODULE module, uint8_t cmd, uint8_t *
 //	return Tuner_ReadBuffer(receive,len);
 
 	  uint8_t buf[3];
-	  buf[0] = module;
-	  buf[1] = cmd;
-	  buf[2] = 1;
-	  Write(buf, 3);
-	  Read((uint8_t*)receive, 2 * len);
-	  for (uint8_t i = 0; i < len; i++)
-	  {
-	    uint16_t newval = (uint8_t)(receive[i] >> 8) | (((uint8_t)(receive[i])) << 8);
-	    receive[i] = newval;
-	  }
+	  buf[0] = module; 	    //module,		FM/AM/APP
+	  buf[1] = cmd;      	//cmd,		    1,2,10,...
+	  buf[2] = 1;          	//index, 		always 1
+	  //Write(buf, 3);
+	  Tuner_WriteBuffer(buf, 3);
+	  //Read((uint8_t*)receive, 2 * len);
+//	  Tuner_ReadBuffer(receive, 2 * len);
+//	  for (uint8_t i = 0; i < len; i++)
+//	  {
+//	    uint16_t newval = (uint8_t)(receive[i] >> 8) | (((uint8_t)(receive[i])) << 8);
+//	    receive[i] = newval;
+//	  }
 	  return Tuner_ReadBuffer(receive,len);
 	 // return 0;  // no error
 }
@@ -3690,8 +3673,8 @@ unsigned char Tuner_WriteBuffer(uint8_t *buf, uint16_t len)
   return (r == HAL_OK) ? 1 : 0;
 }
 
-//unsigned char Tuner_ReadBuffer(unsigned char *buf, uint16_t len)
-unsigned char Tuner_ReadBuffer(uint8_t *buf, uint16_t len)
+unsigned char Tuner_ReadBuffer(unsigned char *buf, uint16_t len)
+//unsigned char Tuner_ReadBuffer(uint8_t *buf, uint16_t len)
 {
 //  uint16_t i;
 //  //Serial.println("\nRead from I2C: ");
@@ -3948,4 +3931,35 @@ uint16_t Tuner_Init(void) {
 void Tuner_WaitMs (uint16_t ms)
 {
 	 HAL_Delay(ms);
+}
+
+uint16_t getLevel() {
+  return Radio_Get_Level(1);
+}
+
+//TODO de verificat stereo/mono
+//	 0 : mono signal
+//   1 : FM stereo signal (stereo pilot detected)
+uint8_t getStereoStatus() {
+  return Radio_CheckStereo();
+}
+
+// status =  0.1  32 ms
+// level = -20 ... 120 dBuV
+// usn = 0  100%
+// wam = 0  100%
+//offset = -1200  1200 (*0.1 kHz) = -120 kHz � 120 kHz
+//bandwidth = FM, 560  3110 [*0.1 kHz]  AM 30 � 80 [*0.1 kHz]
+// modulation = 0  100%
+static int Radio_Get_Data(uint8_t fm, uint8_t *usn, uint8_t *wam, uint16_t *offset)
+{
+	if(Is_Radio_Atomic2||Is_Radio_Lithio)
+	{
+		if(1 == devTEF668x_Radio_Get_Quality_Data (fm,usn,wam,offset))
+		{
+			return 1;
+		}
+	}
+
+	return 0;
 }
