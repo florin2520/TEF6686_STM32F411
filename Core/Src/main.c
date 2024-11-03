@@ -2,7 +2,18 @@
 
 // Functioneaza cu dsp_init declarat in RAM
 
-
+// TODO
+/* de afisat mod stereo cu un punct pe display
+ * de rezolvat cautarea automata intr-o singura banda
+ * animatii display
+ * memorii posturi
+ *
+ *
+ *
+ *
+ *
+ *
+ * */
 /**
   ******************************************************************************
   * @file           : main.c
@@ -161,15 +172,9 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  //sprintf(str1, "Freq = %i.%i Mhz\n\r", freq_1, freq_2);
 
   HAL_GPIO_WritePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin, GPIO_PIN_RESET);
 
-
-  //printf("Start radio\n");
-  //get_RDS();
-  //char *str1 = "Start radio...\n\r";
-  //HAL_UART_Transmit(&huart2, (uint8_t *)str1, strlen (str1), HAL_MAX_DELAY);
   print_serial2_message("Start radio...");
   //start radio
   uint8_t start_rd_ok = init_radio();
@@ -189,19 +194,19 @@ int main(void)
   HAL_Delay(500);
   HAL_GPIO_WritePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin, GPIO_PIN_SET);
 
-    begin_disp(DISPLAY_ADDRESS);  // pass in the address
+  begin_disp(DISPLAY_ADDRESS);  // pass in the address
     //clear_entire_display();
-	writeDigitAscii(0, 'F', false);
-	writeDigitAscii(1, 'M', false);
-	writeDigitAscii(2, ' ', false);
-	writeDigitAscii(3, 'R', false);
-	writeDigitAscii(4, 'A', false);
-	writeDigitAscii(5, 'D', false);
-	writeDigitAscii(6, 'I', false);
-	writeDigitAscii(7, 'O', false);
-	writeDisplay(DISPLAY_ADDRESS);
-	HAL_Delay(1500);
-	clear_display();
+  writeDigitAscii(0, 'F', false);
+  writeDigitAscii(1, 'M', false);
+  writeDigitAscii(2, ' ', false);
+  writeDigitAscii(3, 'R', false);
+  writeDigitAscii(4, 'A', false);
+  writeDigitAscii(5, 'D', false);
+  writeDigitAscii(6, 'I', false);
+  writeDigitAscii(7, 'O', false);
+  writeDisplay(DISPLAY_ADDRESS);
+  HAL_Delay(1500);
+  clear_display();
 	//setFrequency(10760);
   while (1)
   {
