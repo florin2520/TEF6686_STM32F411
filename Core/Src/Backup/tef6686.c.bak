@@ -16,7 +16,7 @@
 #include "dsp_init.h"
 
 #include "usart.h"
-
+#include "Tuner_Patch_Lithio_V102_p209.h"
 
 char str2[30];
 //#define pgm_read_byte_near(address_short) __LPM((uint16_t)(address_short))
@@ -223,7 +223,8 @@ static uint8_t CheckIfStep;
 /*current radio  band*/
 uint8_t Radio_CurrentBand;
 /*current radio  freqency*/
-uint16_t Radio_CurrentFreq;
+//uint16_t Radio_CurrentFreq;
+uint32_t Radio_CurrentFreq;
 /*current radio  station*/
 uint8_t Radio_CurrentStation;
 
@@ -501,48 +502,49 @@ void Set_Deempasis(uint8_t val)
   }
 }
 
-void setup()
+void setup_radio()
 {
-  //Wire.begin();
-  //Serial.begin(115200);
-  //delay(40);
-  HAL_Delay(100);
-  int16_t uState;
-  Get_Cmd(64, 128, &uState, 1);
-  if (uState < 2)
-    dsp_write_data(DSP_INIT);
-  else if (uState > 2)
-  {
-    Set_Cmd(64, 1, 1, 1);
-  }
+  init_radio();
+  powerOn();
+  setFrequency(8870);
+  setVolume(10);
 
-  HAL_Delay(100); //TODO pe analizor nu apare ??
-//  if (AM_VOL_SCALE != -1)
+}
+
+//void setup_radio()
+//{
+//  HAL_Delay(60);
+//  int16_t uState;
+//  Get_Cmd(64, 128, &uState, 1);
+//  if (uState < 2)
+//    dsp_write_data(DSP_INIT);
+//  else if (uState > 2)
 //  {
-//    int SetVolScale = map(AM_VOL_SCALE, 0, 100, -120, 60);
-//    Set_Cmd(33, 80, 1, SetVolScale);
+//    Set_Cmd(64, 1, 1, 1);
 //  }
 //
-
-  // set volume
-    volume = 70;
-    Set_Cmd(48, 11, 1, 0);  //unmute
-    int Setvolume = map(volume, 0, 100, -599, 50);
-    Set_Cmd(48, 10, 1, Setvolume);
-
-  // set freq
-    //MODF_FREQ = 104500;
-    //MODF_FREQ = 88700;
-    //MODF_FREQ = 103600;
-    //MODF_FREQ = 98000;
-    //MODF_FREQ = 90600;
-    //Set_Cmd(32, 1, 2, 1, MODF_FREQ / 10);
-
-   // if (Filter_FM == 16) {Filter_FM = -1;}
-   // current_filter = Filter_FM;
-    //Set_Cmd(32, 10, 4, current_filter == -1 ? 1 : 0, pgm_read_word_near(FMFilterMap + current_filter), 1000, 1000);
-   // Set_Cmd(32, 10, 4, current_filter == -1 ? 1 : 0, pgm_read_word(FMFilterMap + current_filter), 1000, 1000);
-}
+//  HAL_Delay(100); //TODO pe analizor nu apare ??
+//
+//  // set volume
+//    volume = 70;
+//    Set_Cmd(48, 11, 1, 0);  //unmute
+//    int Setvolume = map(volume, 0, 100, -599, 50);
+//    Set_Cmd(48, 10, 1, Setvolume);
+//
+//  // set freq
+//    //MODF_FREQ = 104500;
+//    //MODF_FREQ = 88700;
+//    //MODF_FREQ = 103600;
+//    //MODF_FREQ = 98000;
+//    //MODF_FREQ = 90600;
+//    //Set_Cmd(32, 1, 2, 1, MODF_FREQ / 10);
+//
+//    setFrequency(8870);
+//
+//    if (Filter_FM == 16) {Filter_FM = -1;}
+//    current_filter = Filter_FM;
+//    Set_Cmd(32, 10, 4, current_filter == -1 ? 1 : 0, pgm_read_word(FMFilterMap + current_filter), 1000, 1000);
+//}
 
 //void loop()
 //{
@@ -1372,19 +1374,19 @@ void Radio_SetFreq(uint8_t mode,uint8_t Band,uint16_t Freq)
 
 		switch(mode){
 			case Radio_PRESETMODE:
-				A2Mode = eAR_TuningAction_Preset;
+				A2Mode = eAR_TuningAction_Preset;  /*!< Tune to new program with short mute time */
 				break;
 			case Radio_SEARCHMODE:
-				A2Mode = eAR_TuningAction_Search;
+				A2Mode = eAR_TuningAction_Search;  /*!< Tune to new program and stay muted */
 				break;
 			case Radio_AFUPDATEMODE:
-				A2Mode = eAR_TuningAction_AF_Update;
+				A2Mode = eAR_TuningAction_AF_Update; /*!< Tune to alternative frequency, store quality and tune back with inaudible mute */
 				break;
 			case Radio_JUMPMODE:
-				A2Mode = eAR_TuningAction_Jump;
+				A2Mode = eAR_TuningAction_Jump;  /*!< Tune to alternative frequency with short inaudible mute  */
 				break;
 			case Radio_CHECKMODE:
-				A2Mode = eAR_TuningAction_Check;
+				A2Mode = eAR_TuningAction_Check; /*!< Tune to alternative frequency and stay muted */
 				break;
 		}
         devTEF668x_Radio_Tune_To(TEF665X_Is_FM_Freq(Freq), (uint16_t)A2Mode, Freq);
@@ -1537,25 +1539,6 @@ uint16_t Radio_Get_Level(uint8_t fm)
 	return -255;
 }
 
-// status =  0.1  32 ms
-// level = -20 ... 120 dBuV
-// usn = 0  100%
-// wam = 0  100%
-//offset = -1200  1200 (*0.1 kHz) = -120 kHz ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ 120 kHz
-//bandwidth = FM, 560  3110 [*0.1 kHz]  AM 30 ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â¿Ãƒâ€šÃ‚Â½ 80 [*0.1 kHz]
-// modulation = 0  100%
-static int Radio_Get_Data(uint8_t fm, uint8_t *usn, uint8_t *wam, uint16_t *offset)
-{
-	if(Is_Radio_Atomic2||Is_Radio_Lithio)
-	{
-		if(1 == devTEF668x_Radio_Get_Quality_Data (fm,usn,wam,offset))
-		{
-			return 1;
-		}
-	}
-
-	return 0;
-}
 
 
 
@@ -1596,81 +1579,48 @@ typedef struct{
 //#define TEF668x_CMD_LEN_MAX	20
 #define TEF668x_CMD_LEN_MAX	31
 
+//Set_Cmd(32, 1, 2, 1, MODF_FREQ / 10);
 uint16_t devTEF668x_Set_Cmd(TEF668x_MODULE module, uint8_t cmd, uint16_t len,...)
 {
-	uint16_t i;
+	//uint16_t i;
 	uint8_t buf[TEF668x_CMD_LEN_MAX];
-	uint16_t temp;
+	//uint16_t temp; // nu merge
+	uint32_t temp;
     va_list vArgs;
-
     va_start(vArgs, len);
-
 	buf[0]= module;			//module,		FM/AM/APP
 	buf[1]= cmd;		//cmd,		1,2,10,...
 	buf[2]= 1;	//index, 		always 1
 
 //fill buffer with 16bits one by one
-	for(i=3;i<len;i++)
+	for (uint8_t i = 0; i < len; i++)
 	{
-		temp = va_arg(vArgs,int);	//the size only uint16_t valid for compile
-
-		buf[i++]=High_16bto8b(temp);
-		buf[i]=Low_16bto8b(temp);
+//		temp = va_arg(vArgs,int);	//the size only uint16_t valid for compile
+//
+//		buf[i++]=High_16bto8b(temp);
+//		buf[i]=Low_16bto8b(temp);
+		temp = va_arg(vArgs, uint32_t);
+	    buf[3 + i * 2] = (uint8_t)(temp >> 8);
+	    buf[4 + i * 2] = (uint8_t)temp;
 	}
-
 	va_end(vArgs);
 
-	return Tuner_WriteBuffer(buf, len);
+	//return Tuner_WriteBuffer(buf, len);
+	return Tuner_WriteBuffer(buf, len * 2 + 3);
 
-
-
-//	  uint8_t buf[31];
-//	  //uint16_t temp;
-//	  uint32_t temp;
-//	  va_list vArgs;
-//	  va_start(vArgs, len);
-//	  buf[0] = module;
-//	  buf[1] = cmd;
-//	  buf[2] = 1;
-//	  for (uint8_t i = 0; i < len; i++)
-//	  {
-//	    //temp = va_arg(vArgs, uint16_t);
-//		//temp = va_arg(vArgs, int);
-//		temp = va_arg(vArgs, uint32_t);
-//	    buf[3 + i * 2] = (uint8_t)(temp >> 8);
-//	    buf[4 + i * 2] = (uint8_t)temp;
-//	  }
-//	  va_end(vArgs);
-//	  Write(buf, len * 2 + 3);
-//	  return 0;  // no error
 }
 
-
+// todo de verificat
 static uint16_t devTEF668x_Get_Cmd(TEF668x_MODULE module, uint8_t cmd, uint8_t *receive,uint16_t len)
 {
-//	uint8_t buf[3];
-//
-//	buf[0]= module;			//module,		FM/AM/APP
-//	buf[1]= cmd;		//cmd,		1,2,10,...
-//	buf[2]= 1;	//index, 		always 1
-//
-//	Tuner_WriteBuffer(buf, 3);
-//
-//	return Tuner_ReadBuffer(receive,len);
-
 	  uint8_t buf[3];
-	  buf[0] = module;
-	  buf[1] = cmd;
-	  buf[2] = 1;
-	  Write(buf, 3);
-	  Read((uint8_t*)receive, 2 * len);
-	  for (uint8_t i = 0; i < len; i++)
-	  {
-	    uint16_t newval = (uint8_t)(receive[i] >> 8) | (((uint8_t)(receive[i])) << 8);
-	    receive[i] = newval;
-	  }
-
-	  return 0;  // no error
+	  buf[0] = module; 	    //module,		FM/AM/APP
+	  buf[1] = cmd;      	//cmd,		    1,2,10,...
+	  buf[2] = 1;          	//index, 		always 1
+	  //Write(buf, 3);
+	  Tuner_WriteBuffer(buf, 3);
+	  return Tuner_ReadBuffer(receive,len);
+	 // return 0;  // no error
 }
 
 /*
@@ -1708,6 +1658,11 @@ uint16_t devTEF668x_Radio_Tune_To (uint8_t fm,uint16_t mode,uint16_t frequency )
 			TEF665X_Cmd_Tune_To,
 			(mode<=5)? 7 : 5,
 			mode, frequency);
+
+//	return devTEF668x_Set_Cmd(fm ? TEF665X_MODULE_FM: TEF665X_MODULE_AM,
+//			TEF665X_Cmd_Tune_To,
+//			              2,
+//			mode, frequency);
 }
 
 /*
@@ -3669,7 +3624,8 @@ unsigned char Tuner_WriteBuffer(uint8_t *buf, uint16_t len)
  // }
   //Serial.println("Wire.write");
   //r = Wire.endTransmission();
-   r = HAL_I2C_Master_Transmit(&hi2c1, (uint16_t)DSP_I2C, (uint8_t*)buf, len, 1500);
+   //r = HAL_I2C_Master_Transmit(&hi2c1, (uint16_t)DSP_I2C, (uint8_t*)buf, len, 1500);
+   r = HAL_I2C_Master_Transmit(&hi2c1, (uint16_t)DSP_I2C, (uint8_t*)buf, len, 10);
   //Serial.println("Wire.endTransmission:");
   //Serial.print(r);
   //Serial.println();
@@ -3679,8 +3635,8 @@ unsigned char Tuner_WriteBuffer(uint8_t *buf, uint16_t len)
   return (r == HAL_OK) ? 1 : 0;
 }
 
-//unsigned char Tuner_ReadBuffer(unsigned char *buf, uint16_t len)
-unsigned char Tuner_ReadBuffer(uint8_t *buf, uint16_t len)
+unsigned char Tuner_ReadBuffer(unsigned char *buf, uint16_t len)
+//unsigned char Tuner_ReadBuffer(uint8_t *buf, uint16_t len)
 {
 //  uint16_t i;
 //  //Serial.println("\nRead from I2C: ");
@@ -3697,7 +3653,8 @@ unsigned char Tuner_ReadBuffer(uint8_t *buf, uint16_t len)
 //  return 0;  //
 
 	HAL_StatusTypeDef r;
-	r = HAL_I2C_Master_Receive(&hi2c1, (uint16_t)DSP_I2C, (uint8_t *)buf, len, 1500);
+	//r = HAL_I2C_Master_Receive(&hi2c1, (uint16_t)DSP_I2C, (uint8_t *)buf, len, 1500);
+	r = HAL_I2C_Master_Receive(&hi2c1, (uint16_t)DSP_I2C, (uint8_t *)buf, len, 10);
 	if (r == HAL_OK)
 		return 1;
 	else
@@ -3711,4 +3668,272 @@ void setFrequency(uint16_t frequency) {
 
 uint16_t getFrequency() {
   return Radio_GetCurrentFreq();
+}
+
+uint8_t init_radio()
+{
+  uint8_t result;
+  uint8_t counter = 0;
+  uint8_t status;
+
+  //Tuner_I2C_Init();
+
+  //delay(5);
+  HAL_Delay(5);
+  while (true) {
+    result = devTEF668x_APPL_Get_Operation_Status(&status);
+    if (result == 1) {
+      Tuner_Init();
+      powerOff();
+      return 1; //Ok
+    }
+    else if (++counter > 50) {
+      return 2; //Doesn't exist
+    }
+    else {
+      //delay(5);
+      HAL_Delay(5);
+      return 0;  //Busy
+    }
+  }
+}
+
+void powerOn() {
+  devTEF668x_APPL_Set_OperationMode(0);
+}
+
+void powerOff() {
+  devTEF668x_APPL_Set_OperationMode(1);
+}
+void setVolume(uint16_t volume) {
+  devTEF668x_Audio_Set_Volume(volume);
+}
+
+void setMute() {
+  devTEF668x_Audio_Set_Mute(1);
+}
+
+void setUnMute() {
+  devTEF668x_Audio_Set_Mute(0);
+}
+
+
+static const unsigned char tuner_init_tab[] = {
+3,	0x1c,0x00,0x00,//Clear Required Initialization Control
+3,	0x1C,0x00,0x74,//Set Required Initialization Control(1)
+//Load Required Initialization(s)....
+1,	INIT_FLAG_PATCH1,
+
+3,	0x1c,0x00,0x00,//Clear Required Initialization Control
+3,	0x1C,0x00,0x75,//Set Required Initialization Control(2)
+//Load Required Initialization(s)....
+1,	INIT_FLAG_PATCH2,
+
+3,	0x1c,0x00,0x00,//Clear Required Initialization Control
+3,	0x14,0x00,0x01,//Start Firmware....
+
+//wait 50ms
+2,	INIT_FLAG_TIMER,50,	//(Boot state to Idle State)
+
+9,	0x40,0x04,0x01,0x00,0x8C,0xA0,0x00,0x00,0x00,//APPL_Set_ReferenceClock
+
+//Activate Device...(Idle state to Active state)
+5,	0x40,0x05,0x01,0x00,0x01,// APPL_Activate
+//wait 100ms
+2,	INIT_FLAG_TIMER,100, //(Idle state to Active state)
+
+11, 0x20,0x0A,0x01,0x00,0x01,0x09,0x38,0x03,0xE8,0x03,0xE8,       // FM_Set_Bandwidth (1, 1, 2360, 1000, 1000)
+5,	0x20,0x16,0x01,0x00,0x01,             // FM_Set_ChannelEqualizer (1, 1)
+5,	0x20,0x1F,0x01,0x01,0xF4,             // FM_Set_Deemphasis (1, 500)
+5,	0x20,0x1E,0x01,0x00,0x00,             // FM_Set_DigitalRadio (1, 0)
+11,	0x20,0x53,0x01,0x00,0x00,0x00,0x32,0x00,0x32,0x00,0x00,       // FM_Set_DR_Blend (1, 0, 50, 50, 0)
+9,	0x20,0x54,0x01,0x00,0x00,0x22,0x04,0x10,0x10,             // FM_Set_DR_Options (1, 0, 8708, 4112)
+5,	0x20,0x14,0x01,0x00,0x01,             // FM_Set_MphSuppression (1, 1)
+7,	0x20,0x17,0x01,0x00,0x01,0x03,0xE8,   // FM_Set_NoiseBlanker (1, 1, 1000)
+7,	0x20,0x52,0x01,0x00,0x00,0x00,0x00,   // FM_Set_QualityStatus (1, 0, 0)
+7,	0x20,0x52,0x01,0x00,0xC8,0x00,0x00,   // FM_Set_QualityStatus (1, 200, 0)
+7,	0x20,0x0B,0x01,0x03,0x98,0x00,0x00,   // FM_Set_RFAGC (1, 920, 0)
+5,	0x20,0x50,0x01,0x00,0x00,             // FM_Set_Scaler (1, 0)
+5,	0x20,0x55,0x01,0x00,0x00,             // FM_Set_Specials (1, 0)
+11,	0x20,0x02,0x01,0x00,0x00,0x09,0x38,0x03,0xE8,0x07,0xD0,      // FM_Set_Tune_Options (1, 0, 2360, 1000, 2000)
+9,	0x20,0x51,0x01,0x00,0x01,0x00,0x02,0x00,0x00,             // FM_Set_RDS (1, 1, 2, 0)
+17,	0x20,0x26,0x01,0xFF,0xEC,0xFF,0xE2,0xFF,0xD8,0xFF,0xCE,0xFF,0xC4,0xFF,0xC4,0xFF,0xC4, // FM_Set_LevelStep (1, -20, -30, -40, -50, -60, -60, -60)
+17,	0x20,0x26,0x01,0xFF,0xEC,0xFF,0xE2,0xFF,0xD8,0xFF,0xCE,0xFF,0xC4,0xFF,0xC4,0xFF,0xC4, // FM_Set_LevelStep (1, -20, -30, -40, -50, -60, -60, -60)
+17,	0x20,0x26,0x01,0xFF,0xEC,0xFF,0xE2,0xFF,0xD8,0xFF,0xCE,0xFF,0xC4,0xFF,0xC4,0xFF,0xC4, // FM_Set_LevelStep (1, -20, -30, -40, -50, -60, -60, -60)
+17,	0x20,0x26,0x01,0xFF,0xEC,0xFF,0xE2,0xFF,0xD8,0xFF,0xCE,0xFF,0xC4,0xFF,0xC4,0xFF,0xC4, // FM_Set_LevelStep (1, -20, -30, -40, -50, -60, -60, -60)
+17,	0x20,0x26,0x01,0xFF,0xEC,0xFF,0xE2,0xFF,0xD8,0xFF,0xCE,0xFF,0xC4,0xFF,0xC4,0xFF,0xC4, // FM_Set_LevelStep (1, -20, -30, -40, -50, -60, -60, -60)
+17,	0x20,0x26,0x01,0xFF,0xEC,0xFF,0xE2,0xFF,0xD8,0xFF,0xCE,0xFF,0xC4,0xFF,0xC4,0xFF,0xC4, // FM_Set_LevelStep (1, -20, -30, -40, -50, -60, -60, -60)
+17,	0x20,0x26,0x01,0xFF,0xEC,0xFF,0xE2,0xFF,0xD8,0xFF,0xCE,0xFF,0xC4,0xFF,0xC4,0xFF,0xC4, // FM_Set_LevelStep (1, -20, -30, -40, -50, -60, -60, -60)
+5,	0x20,0x27,0x01,0x00,0x00,                 // FM_Set_LevelOffset (1, 0)
+9,	0x20,0x2A,0x01,0x00,0x02,0x00,0x96,0x00,0xDC,             // FM_Set_SoftMute_Level (1, 2, 150, 220)
+11,	0x20,0x28,0x01,0x00,0x78,0x01,0xF4,0x00,0x0A,0x00,0x14,   // FM_Set_SoftMute_Time (1, 120, 500, 10, 20)
+9,	0x20,0x2C,0x01,0x00,0x00,0x00,0xC8,0x03,0xE8,             // FM_Set_SoftMute_Mph (1, 0, 200, 1000)
+9,	0x20,0x2B,0x01,0x00,0x00,0x00,0xC8,0x03,0xE8,             // FM_Set_SoftMute_Noise (1, 0, 200, 1000)
+7,	0x20,0x2D,0x01,0x00,0x01,0x00,0xC8,                 // FM_Set_SoftMute_Max (1, 1, 200)
+9,	0x20,0x34,0x01,0x00,0x03,0x01,0x68,0x01,0x2C,             // FM_Set_HighCut_Level (1, 3, 360, 300)
+11,	0x20,0x32,0x01,0x00,0xC8,0x07,0xD0,0x00,0x0A,0x00,0x50,       // FM_Set_HighCut_Time (1, 200, 2000, 10, 80)
+11,	0x20,0x33,0x01,0x00,0x00,0x00,0xFA,0x00,0x82,0x01,0xF4,       // FM_Set_HighCut_Mod (1, 0, 250, 130, 500)
+9,	0x20,0x36,0x01,0x00,0x03,0x00,0x78,0x00,0xA0,         // FM_Set_HighCut_Mph (1, 3, 120, 160)
+9,	0x20,0x35,0x01,0x00,0x03,0x00,0x96,0x00,0xC8,            // FM_Set_HighCut_Noise (1, 3, 150, 200)
+7,	0x20,0x3A,0x01,0x00,0x00,0x00,0x14,                  // FM_Set_LowCut_Min (1, 0, 20)
+7,	0x20,0x37,0x01,0x00,0x01,0x09,0x60,                  // FM_Set_HighCut_Max (1, 1, 2400)
+7,	0x20,0x39,0x01,0x00,0x01,0x00,0x64,                  // FM_Set_LowCut_Max (1, 1, 100)
+5,	0x20,0x3B,0x01,0x00,0x01,                  // FM_Set_HighCut_Options (1, 1)
+9,	0x20,0x3E,0x01,0x00,0x03,0x01,0xCC,0x00,0xF0,             // FM_Set_Stereo_Level (1, 3, 460, 240)
+11,	0x20,0x3C,0x01,0x00,0xC8,0x0F,0xA0,0x00,0x14,0x00,0x50,      // FM_Set_Stereo_Time (1, 200, 4000, 20, 80)
+11,	0x20,0x3D,0x01,0x00,0x00,0x00,0xD2,0x00,0x5A,0x01,0xF4,      // FM_Set_Stereo_Mod (1, 0, 210, 90, 500)
+9,	0x20,0x40,0x01,0x00,0x03,0x00,0x64,0x00,0x96,             // FM_Set_Stereo_Mph (1, 3, 100, 150)
+9,	0x20,0x3F,0x01,0x00,0x03,0x00,0x78,0x00,0xA0,             // FM_Set_Stereo_Noise (1, 3, 120, 160)
+7,	0x20,0x42,0x01,0x00,0x00,0x01,0x90,               // FM_Set_Stereo_Min (1, 0, 400)
+5,	0x20,0x41,0x01,0x00,0x01,                   // FM_Set_Stereo_Max (1, 1)
+9,	0x20,0x48,0x01,0x00,0x03,0x02,0x58,0x00,0xF0,             // FM_Set_StHiBlend_Level (1, 3, 600, 240)
+11,	0x20,0x46,0x01,0x01,0xF4,0x07,0xD0,0x00,0x14,0x00,0x14,       // FM_Set_StHiBlend_Time (1, 500, 2000, 20, 20)
+11,	0x20,0x47,0x01,0x00,0x00,0x00,0xF0,0x00,0x78,0x02,0x9E,       // FM_Set_StHiBlend_Mod (1, 0, 240, 120, 670)
+9,	0x20,0x4A,0x01,0x00,0x03,0x00,0x50,0x00,0x8C,        // FM_Set_StHiBlend_Mph (1, 3, 80, 140)
+9,	0x20,0x49,0x01,0x00,0x03,0x00,0x50,0x00,0x8C,             // FM_Set_StHiBlend_Noise (1, 3, 80, 140)
+7,	0x20,0x4C,0x01,0x00,0x00,0x1B,0x58,               // FM_Set_StHiBlend_Min (1, 0, 7000)
+7,	0x20,0x4B,0x01,0x00,0x01,0x0F,0xA0,                   // FM_Set_StHiBlend_Max (1, 1, 4000)
+//Set the Audio and Application related API settings...
+9,	0x40,0x03,0x01,0x00,0x00,0x00,0x21,0x00,0x03,             // APPL_Set_GPIO (1, 0, 33, 3)
+9,	0x40,0x03,0x01,0x00,0x01,0x00,0x21,0x00,0x00,            // APPL_Set_GPIO (1, 1, 33, 0)
+9,	0x40,0x03,0x01,0x00,0x02,0x00,0x21,0x00,0x00,             // APPL_Set_GPIO (1, 2, 33, 0)
+9,	0x40,0x03,0x01,0x00,0x00,0x00,0x20,0x00,0x03,             // APPL_Set_GPIO (1, 0, 32, 3)
+9,	0x40,0x03,0x01,0x00,0x01,0x00,0x20,0x00,0x00,             // APPL_Set_GPIO (1, 1, 32, 0)
+9,	0x40,0x03,0x01,0x00,0x02,0x00,0x20,0x00,0x00,             // APPL_Set_GPIO (1, 2, 32, 0)
+7,	0x30,0x15,0x01,0x00,0x80,0x00,0x01,               // AUDIO_Set_Ana_Out (1, 128, 1)
+13,	0x30,0x16,0x01,0x00,0x20,0x00,0x00,0x00,0x20,0x00,0x00,0x11,0x3A, // AUDIO_Set_Dig_IO (1, 32, 0, 32, 0, 4410)
+13,	0x30,0x16,0x01,0x00,0x21,0x00,0x00,0x00,0x20,0x00,0x00,0x11,0x3A, // AUDIO_Set_Dig_IO (1, 33, 0, 32, 0, 4410)
+5,	0x30,0x0C,0x01,0x00,0x00,                   // AUDIO_Set_Input (1, 0)
+7,	0x30,0x17,0x01,0x00,0x20,0x00,0x00,         // AUDIO_Set_Input_Scaler (1, 32, 0)
+5,	0x30,0x0B,0x01,0x00,0x00,                   // AUDIO_Set_Mute (1, 0)
+5,	0x30,0x0A,0x01,0x00,0x00,                   // AUDIO_Set_Volume (1, 0)
+15,	0x30,0x18,0x01,0x00,0x00,0x00,0x00,0xFF,0x38,0x01,0x90,0xFF,0x38,0x03,0xE8, // AUDIO_Set_WaveGen (1, 0, 0, -200, 400, -200, 1000)
+7,	0x30,0x0D,0x01,0x00,0x21,0x00,0xE0,                  // AUDIO_Set_Output_Source (1, 33, 224)
+7,	0x30,0x0D,0x01,0x00,0x80,0x00,0xE0,                 // AUDIO_Set_Output_Source (1, 128, 224)
+};
+
+
+//------------load patch and init parameters-----------------
+
+/*
+The transmission example below shows a data content of 12 words for every data transmission.
+The data stream can be split in any desired length on (2-byte) word boundaries with every data transmission starting with hex value 1B
+*/
+#define TEF665X_SPLIT_SIZE		24
+static uint16_t Tuner_Patch_Load(const unsigned char * pLutBytes, uint16_t size)
+{
+	unsigned char buf[TEF665X_SPLIT_SIZE+1];
+	uint16_t i,len;
+	uint16_t r;
+
+	buf[0] = 0x1b;
+
+	while(size)
+	{
+		len = (size>TEF665X_SPLIT_SIZE)? TEF665X_SPLIT_SIZE : size;
+		size -= len;
+
+		for(i=0;i<len;i++)
+			buf[1+i] = pLutBytes[i];
+
+		pLutBytes+=len;
+
+		if(1 != (r = Tuner_WriteBuffer(buf, len+1)))
+		{
+			break;
+		}
+	}
+
+	return r;
+}
+static uint16_t Tuner_Table_Write(const unsigned char * tab)
+{
+//use a timer delay in init table
+	if(tab[1] == INIT_FLAG_TIMER)
+	{
+		Tuner_WaitMs(tab[2]);
+		return 1;
+	}
+//load patch table1
+	else if(tab[1] == INIT_FLAG_PATCH1)
+	{
+		return Tuner_Patch_Load(pPatchBytes, PatchSize);
+	}
+//load patch table2
+	else if(tab[1] == INIT_FLAG_PATCH2)
+	{
+		return Tuner_Patch_Load(pLutBytes, LutSize);
+	}
+	else
+		return Tuner_WriteBuffer((unsigned char *)&tab[1], tab[0]);
+}
+
+
+//return 1 = sucsess
+uint16_t Tuner_Init(void) {
+	uint16_t i;
+	uint16_t r;
+	const unsigned char *p = tuner_init_tab;
+	for(i=0;i<sizeof(tuner_init_tab);i+=(p[i]+1))
+	{
+		if(1 != (r=Tuner_Table_Write(p+i)))
+			break;
+	}
+
+	return r;
+}
+
+//TwoWire Wire2 (I2C_PORT, I2C_FAST_MODE);
+
+//#define INIT_FLAG_TIMER		0xff
+//#define INIT_FLAG_PATCH1	0xfe
+//#define INIT_FLAG_PATCH2	0xfd
+
+
+
+void Tuner_WaitMs (uint16_t ms)
+{
+	 HAL_Delay(ms);
+}
+
+uint16_t getLevel() {
+  return Radio_Get_Level(1);
+}
+
+//TODO de verificat stereo/mono
+//	 0 : mono signal
+//   1 : FM stereo signal (stereo pilot detected)
+uint8_t getStereoStatus() {
+  return Radio_CheckStereo();
+}
+
+// status =  0.1  32 ms
+// level = -20 ... 120 dBuV
+// usn = 0  100%
+// wam = 0  100%
+//offset = -1200  1200 (*0.1 kHz) = -120 kHz � 120 kHz
+//bandwidth = FM, 560  3110 [*0.1 kHz]  AM 30 � 80 [*0.1 kHz]
+// modulation = 0  100%
+static int Radio_Get_Data(uint8_t fm, uint8_t *usn, uint8_t *wam, uint16_t *offset)
+{
+	if(Is_Radio_Atomic2||Is_Radio_Lithio)
+	{
+		if(1 == devTEF668x_Radio_Get_Quality_Data (fm,usn,wam,offset))
+		{
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+/*-----------------------------------------------------------------------
+Function name:	Radio_SetBand
+Input:			Band
+Output:
+Description:	 set band
+------------------------------------------------------------------------*/
+void Radio_SetBand(uint8_t Band)
+{
+	Radio_SetFreq(Radio_PRESETMODE,Band,StationRecord[Band].Freq[0]);
 }

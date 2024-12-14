@@ -7,7 +7,7 @@
  * de rezolvat cautarea automata intr-o singura banda
  * animatii display
  * memorii posturi
- *
+ * de ce dureaza bucla while principala atat de mult ??
  *
  *
  *
@@ -48,6 +48,7 @@
 #include "DISP_14_SEG.h"
 #include "tef6686.h"
 #include "I2C_reg.h"
+#include "display_functions.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -79,6 +80,7 @@ volatile bool seek_down;
 //char *start_radio = "Start radio...\n\r";
 char str1[30];
 char message_frequency[36];
+char message_frequency_display[36];
 char message_volume[26];
 
 extern int16_t volume;
@@ -93,34 +95,59 @@ extern int8_t Filter_AM;
 extern int8_t Filter_FM;
 extern int8_t current_filter;  // Current FIR filter (-1 is adaptive)
 
-
 char str[40];
 
 uint16_t encoder_reading_f, old_encoder_reading_f;
 uint16_t encoder_reading_v, old_encoder_reading_v;
 
-
 extern char rdsRadioText[65];
 extern char rdsProgramService[9];
 extern char rdsProgramType[17];
 
-char display_buffer[] = "        "; // 8 caractere
+//char display_buffer[] = "        "; // 8 caractere
 
-char message_freq_static[13];
+//char message_freq_static[13];
 
 uint16_t seek_frequency;
 bool isFmSeekMode;
 bool isFmSeekUp;
 uint8_t current_band;
 uint8_t stereo_status; //0 mono, 1 stereo
+
+extern char radioTextPrevious[65];
+extern char rdsProgramService[9];
+
+char message_to_scroll_1[] = "ABCD";                                  // 4+1
+char message_to_scroll_2[] = "MESAJUL2";                              // 8+1
+char message_to_scroll_3[] = "ACEST MESAJ3";                          // 12+1
+char message_to_scroll_4[] = "MESSAGE TO SCROLL ON DISPLAY  ";        // 30+1
+char message_to_scroll_5[] = "MESAJUL DE AVERTIZARE CU NUMARUL 5  ";  // 36+1
+
+
+char message_1char[] = "1";                                // 1+1
+char message_2char[] = "12";                               // 2+1
+char message_3char[] = "123 ";                              // 3+1
+
+char message_5char[] = "UNU12";                                // 5+1
+char message_6char[] = "UNU123";                               // 6+1
+char message_7char[] = "UNU1234";                              // 7+1
+
+char message_9char[] = "UNU123456";                                //
+char message_10char[] = "UNU1234567";                               //
+char message_11char[] = "UNU12345678";                              //
+
+extern char mess_frequency[30];
+extern char mess_freq_static[30];
+extern char mess_volume[30];
+
+uint8_t test_timer4;
+bool freq_vol_changed_manual;
 /* USER CODE END PV */
 
-/* Private function prototypes -----------------------------------------------*/
+/* Private function prototypes --------------s---------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 void display_rds_info();
-void disp_vol(uint32_t vol);
-void disp_freq(uint32_t freq);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -165,6 +192,8 @@ int main(void)
   MX_ADC1_Init();
   MX_USART2_UART_Init();
   MX_I2C3_Init();
+  MX_TIM5_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Encoder_Start_IT(&htim2, TIM_CHANNEL_ALL);  // volum
   HAL_TIM_Encoder_Start_IT(&htim3, TIM_CHANNEL_ALL);  // frecventa
@@ -207,7 +236,12 @@ int main(void)
   writeDisplay(DISPLAY_ADDRESS);
   HAL_Delay(1500);
   clear_display();
-	//setFrequency(10760);
+  freq_vol_changed_manual = true;
+  HAL_TIM_Base_Start_IT(&htim4); // Enable the timer
+  HAL_TIM_Base_Start_IT(&htim5); // Enable the timer
+  freq = current_freq;
+  populate_freq_array(freq);
+
   while (1)
   {
     /* USER CODE END WHILE */
@@ -215,8 +249,19 @@ int main(void)
     /* USER CODE BEGIN 3 */
       contor++;
       //print_serial2_message_number("contor = ", contor);
+
       showFmSeek();
-      stereo_status = getStereoStatus();
+     //stereo_status = getStereoStatus(); // very very slow function!!!
+      if(freq_vol_changed_manual == false)
+      {
+    	  //HAL_TIM_Base_Start_IT(&htim5);
+    	  display_scrolling_message(mess_frequency);
+      }
+
+	  //display_scrolling_message(rdsProgramService);
+      //display_static_message(rdsProgramService);
+
+
       // IF Button seek up Is Pressed
       if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_14) == 0)  // seek up  butonul de freq
       {
@@ -265,6 +310,10 @@ int main(void)
 		if(encoder_reading_v != old_encoder_reading_v)
 		{
 		 // map(value, fromLow, fromHigh, toLow, toHigh)
+		   freq_vol_changed_manual = true;
+		  // HAL_TIM_Base_Stop_IT(&htim5);
+		   __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
+
 		   int vol = map(encoder_reading_v, 0, 30, -40, 15);
 		   setVolume(vol);
 		   sprintf(message_volume, "Vol = %i  \r", vol);
@@ -290,6 +339,8 @@ int main(void)
 		}
 		if(encoder_reading_f != old_encoder_reading_f)
 		{
+			freq_vol_changed_manual = true;
+			__HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
 			clear_rds_buffers(rdsProgramType,17);
 		    clear_rds_buffers(rdsProgramService, 9);
 		    clear_rds_buffers(rdsRadioText, 65);
@@ -300,14 +351,18 @@ int main(void)
 		    print_serial2_message(message_frequency);
 		    clear_display();
 		    disp_freq(freq);
+		    current_freq = getFrequency();
+		    disp_freq(current_freq);
+		    freq = current_freq;
+		    populate_freq_array(freq);
 		}
 		old_encoder_reading_f = encoder_reading_f;
 
-		if(contor >= 70000)
+		if(contor >= 50000)
 		{
 			contor = 0;
 			//display_rds_info();
-			//print_serial2_message("==================");
+			print_serial2_message("==================");
 			HAL_GPIO_TogglePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin);
 		}
 
@@ -382,157 +437,6 @@ void display_rds_info()
   showRadioText();
 }
 
-void disp_vol(uint32_t vol)  // 0-60
-{
-    uint8_t vol_0 = vol / 10;  // prima cifra
-    uint8_t vol_1 = vol % 10;  // a doua cifra
-    if(vol_0 > 0)
-    {
-    	writeDigitAscii(0, 'V', false);
-    	writeDigitAscii(1, 'O', false);
-    	writeDigitAscii(2, 'L', false);
-    	writeDigitAscii(3, ' ', false);
-    	writeDigitAscii(4, vol_0 + 48, false);
-    	writeDigitAscii(5, vol_1 + 48, false);
-    	writeDisplay(DISPLAY_ADDRESS);
-    }
-    else
-    {
-    	writeDigitAscii(0, 'V', false);
-    	writeDigitAscii(1, 'O', false);
-    	writeDigitAscii(2, 'L', false);
-    	writeDigitAscii(3, ' ', false);
-    	writeDigitAscii(4, ' ', false);
-    	writeDigitAscii(5, vol_1 + 48, false);
-    	writeDisplay(DISPLAY_ADDRESS);
-    }
-
-
-}
-void disp_freq(uint32_t freq)
-{
-	if (freq >= 10000)
-	{
-		uint16_t freq_0 = freq / 10000; // prima cifra
-		uint16_t f_0 = freq % 10000;
-		uint16_t freq_1 = f_0 / 1000;   // a doua cifra
-		uint16_t f_1 =  f_0 % 1000;
-		uint16_t freq_2 = f_1 / 100;   // a treia cifra  (*cu punct jos)
-		uint16_t freq_3 = f_1 %  100;
-		uint16_t freq_4 = freq_3 / 10;   // a patra cifra
-
-		writeDigitAscii(0, 'F', false);
-		writeDigitAscii(1, ' ', false);
-		writeDigitAscii(2, freq_0 + 48, false);
-		writeDigitAscii(3, freq_1 + 48, false);
-		writeDigitAscii(4, freq_2 + 48, true);
-		writeDigitAscii(5, freq_4 + 48, false);
-		writeDisplay(DISPLAY_ADDRESS);
-	}
-	else
-	{
-		uint16_t freq_0 = freq / 1000; // prima cifra
-		uint16_t f_0 = freq % 1000;
-		uint16_t freq_1 = f_0 / 100;   // a doua cifra
-		uint16_t f_1 =  f_0 % 100;
-		uint16_t freq_2 = f_1 / 10;   // a treia cifra  (*cu punct jos)
-		//uint16_t freq_3 = f_1 % 100;   // a patra cifra
-
-		writeDigitAscii(0, 'F', false);
-		writeDigitAscii(1, ' ', false);
-		writeDigitAscii(2, ' ', false);
-		writeDigitAscii(3, freq_0 + 48, false);
-		writeDigitAscii(4, freq_1 + 48, true);
-		writeDigitAscii(5, freq_2+ 48, false);
-		writeDisplay(DISPLAY_ADDRESS);
-	}
-
-
-}
-
-void populate_vol_array(uint16_t vol)
-{
-  // char message_volume[] = "VOLUME 10";
-	uint8_t v1 = vol / 10;
-	uint8_t v2 = vol % 10;
-
-	message_volume[0] = 'V';
-	message_volume[1] = 'O';
-	message_volume[2] = 'L';
-	message_volume[3] = 'U';
-	message_volume[4] = 'M';
-	message_volume[5] = 'E';
-	message_volume[6] = ' ';
-	//message_volume[7] = v1 + 48;
-	if(v1 + 48 == '0')
-	{
-		message_volume[7] = ' ';
-	}
-	else
-	{
-		message_volume[7] = v1 + 48;
-	}
-	message_volume[8] = v2 + 48;
-}
-
-void populate_freq_array(uint16_t freq)
-{
-	//char message_frequency[] = "FREQ: 1045 MHZ  ";
-
-	uint16_t freq_0 = freq / 1000; // prima cifra
-	uint16_t f_0 = freq % 1000;
-	uint16_t freq_1 = f_0 / 100;   // a doua cifra
-	uint16_t f_1 =  f_0 % 100;
-	uint16_t freq_2 = f_1 / 10;   // a treia cifra  (*cu punct jos)
-	uint16_t freq_3 = f_1 % 10;   // a patra cifra
-
-
-	message_frequency[0] = 'F';
-	message_frequency[1] = 'R';
-	message_frequency[2] = 'E';
-	message_frequency[3] = 'Q';
-	message_frequency[4] = ' ';
-	//message_frequency[5] = freq_0 + 48;
-	if(freq_0 + 48 == '0')
-	{
-		message_frequency[5] = ' ';
-	}
-	else
-	{
-		message_frequency[5] = freq_0 + 48;
-	}
-    message_frequency[6] = freq_1 + 48;
-    message_frequency[7] = freq_2 + 48; // punct
-	message_frequency[8] = freq_3 + 48;
-	message_frequency[9] = ' ';
-	message_frequency[10] = 'M';
-	message_frequency[11] = 'H';
-	message_frequency[12] = 'Z';
-	message_frequency[13] = ' ';
-	message_frequency[14] = ' ';
-
-	message_freq_static[0] = 'F';
-	message_freq_static[1] = ' ';
-	//message_freq_static[2] = freq_0 + 48;
-	if(freq_0 + 48 == '0')
-	{
-		message_freq_static[2] = ' ';
-	}
-	else
-	{
-		message_freq_static[2] = freq_0 + 48;
-	}
-	message_freq_static[3] = freq_1 + 48;
-	message_freq_static[4] = freq_2 + 48; // punct;
-	message_freq_static[5] = freq_3 + 48;
-	message_freq_static[6] = ' ';
-	message_freq_static[7] = 'M';
-	message_freq_static[8] = 'H';
-	message_freq_static[9] = 'Z';
-	message_freq_static[10] = ' ';
-	message_freq_static[11] = ' ';
-
-}
 
 void showFmSeek() {
 	uint16_t current_freq;
@@ -544,12 +448,17 @@ void showFmSeek() {
       TIM3->CNT = ((current_freq - 8750)/10)<<1;
 	  clear_display();
 	  disp_freq(current_freq);
-      sprintf(message_frequency, "curentFrecv = %i MHz \r", current_freq);
+	  freq = current_freq;
+      sprintf(message_frequency, "curentFrecv = %li MHz \r", freq);
       print_serial2_message(message_frequency);
+      populate_freq_array(freq);
+      //sprintf(message_frequency_display, "FREQ = %lu MHZ  ", freq);
     }
 
   }
 }
+
+
 /* USER CODE END 4 */
 
 /**
@@ -569,6 +478,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
+  if (htim->Instance == TIM4) {        // 0.5 sec
+	  test_timer4++;
+  }
+
+  if (htim->Instance == TIM5) {        // 3 sec
+	  freq_vol_changed_manual = false;
+  }
 
   /* USER CODE END Callback 1 */
 }

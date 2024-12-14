@@ -11,8 +11,9 @@
 //#include "string.h"
 
 #include "I2C_reg.h"
-//extern I2C_HandleTypeDef hi2c2;
 uint16_t displaybuffer[8];
+//extern I2C_HandleTypeDef hi2c2;
+//uint16_t displaybuffer[8];
 //uint8_t i2c_addr;
 
 /*
@@ -246,13 +247,7 @@ void writeDisplay(uint8_t i2c_addr)
 
 }
 
-void clear_display(void)
-{
-  for (uint8_t i=0; i<8; i++)
-  {
-    displaybuffer[i] = 0;
-  }
-}
+
 
 
 void writeDigitRaw(uint8_t n, uint16_t bitmask)

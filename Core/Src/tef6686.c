@@ -3624,7 +3624,8 @@ unsigned char Tuner_WriteBuffer(uint8_t *buf, uint16_t len)
  // }
   //Serial.println("Wire.write");
   //r = Wire.endTransmission();
-   r = HAL_I2C_Master_Transmit(&hi2c1, (uint16_t)DSP_I2C, (uint8_t*)buf, len, 1500);
+   //r = HAL_I2C_Master_Transmit(&hi2c1, (uint16_t)DSP_I2C, (uint8_t*)buf, len, 1500);
+   r = HAL_I2C_Master_Transmit(&hi2c1, (uint16_t)DSP_I2C, (uint8_t*)buf, len, 10);
   //Serial.println("Wire.endTransmission:");
   //Serial.print(r);
   //Serial.println();
@@ -3652,7 +3653,8 @@ unsigned char Tuner_ReadBuffer(unsigned char *buf, uint16_t len)
 //  return 0;  //
 
 	HAL_StatusTypeDef r;
-	r = HAL_I2C_Master_Receive(&hi2c1, (uint16_t)DSP_I2C, (uint8_t *)buf, len, 1500);
+	//r = HAL_I2C_Master_Receive(&hi2c1, (uint16_t)DSP_I2C, (uint8_t *)buf, len, 1500);
+	r = HAL_I2C_Master_Receive(&hi2c1, (uint16_t)DSP_I2C, (uint8_t *)buf, len, 10);
 	if (r == HAL_OK)
 		return 1;
 	else

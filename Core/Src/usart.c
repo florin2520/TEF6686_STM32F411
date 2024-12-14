@@ -119,18 +119,18 @@ void print_serial2_message_number(char *msg, uint32_t var)
 {
 	char str[100];
     sprintf(str, "%s %li\n\r", msg, var);
-    HAL_UART_Transmit(&huart2, (uint8_t *)str, strlen (str), HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart2, (uint8_t *)str, strlen (str), 10);
 }
 void print_serial1_message(char *msg)
 {
 	char str[100];
     sprintf(str, "%s", msg);
-    HAL_UART_Transmit(&huart2, (uint8_t *)str, strlen (str), HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart2, (uint8_t *)str, strlen (str), 10);
 }
 void print_serial2_message(char *msg)
 {
 	char str[100];
     sprintf(str, "%s\n\r", msg);
-    HAL_UART_Transmit(&huart2, (uint8_t *)str, strlen (str), HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart2, (uint8_t *)str, strlen (str), 10);
 }
 /* USER CODE END 1 */
