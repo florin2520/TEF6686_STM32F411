@@ -240,6 +240,7 @@ int main(void)
   freq = current_freq;
   populate_freq_array(freq);
  // rds_info_ready_to_display = false;
+  change_rds_display = 1;
   while (1)
   {
     /* USER CODE END WHILE */
@@ -384,11 +385,10 @@ int main(void)
 			    	{
 						      //prepare_rds_for_display(programServicePrevious);
 						      //display_static_message(mess_rds_ps);
-//			    		 if(rds_string_lenght <= 2)
-//			    		 {
-//						     display_static_message(mess_rds_ps);
-//						     change_rds_display = 1;
-//			    		 }
+			    		 if(rds_string_lenght <= 2)
+			    		 {
+						     change_rds_display = 1;
+			    		 }
 			    	     if(change_rds_display == 1)
 			    	     {
 			    	    	if(rds_string_lenght <= 2)
@@ -397,15 +397,21 @@ int main(void)
 							     display_static_message(mess_rds_ps);
 							     change_rds_display = 1;
 			    	    	}
-			    	    	else
-			    	    	{
-				    	    	display_static_message(mess_rds_rt1);
-			    	    	}
-
 			        	    if ((rds_string_lenght > 2) && (rds_string_lenght <= 8)) // 3-8
 			        	    {
 			        	    	display_static_message(mess_rds_rt1);
 			        	    	change_rds_display = 1;
+			        	    }
+			        	    if (rds_string_lenght > 8)
+			        	    {
+			        	    	display_static_message(mess_rds_rt1);
+			        	    	static uint8_t current_count = 0;
+			        	    	current_count++;
+                                if (current_count > 10)  // time to display last screen
+                                {
+                                    current_count = 0;
+                                    change_rds_display = 2;
+                                }
 			        	    }
 			    	    }
 			    	    else if (change_rds_display == 2)
@@ -415,10 +421,20 @@ int main(void)
 			        	    {
 			        	    	static uint8_t current_count = 0;
 			        	    	current_count++;
-                                if (current_count > 8)  // time to display last screen
+                                if (current_count > 10)  // time to display last screen
                                 {
                                     current_count = 0;
                                     change_rds_display = 1;
+                                }
+			        	    }
+			        	    else if (rds_string_lenght > 16)
+			        	    {
+			        	    	static uint8_t current_count = 0;
+			        	    	current_count++;
+                                if (current_count > 10)  // time to display last screen
+                                {
+                                    current_count = 0;
+                                    change_rds_display = 3;
                                 }
 			        	    }
 			    	    }
@@ -429,10 +445,20 @@ int main(void)
 			        	    {
 			        	    	static uint8_t current_count = 0;
 			        	    	current_count++;
-                                if (current_count > 8)  // time to display last screen
+                                if (current_count > 10)  // time to display last screen
                                 {
                                     current_count = 0;
                                     change_rds_display = 1;
+                                }
+			        	    }
+			        	    else if (rds_string_lenght > 24)
+			        	    {
+			        	    	static uint8_t current_count = 0;
+			        	    	current_count++;
+                                if (current_count > 10)  // time to display last screen
+                                {
+                                    current_count = 0;
+                                    change_rds_display = 4;
                                 }
 			        	    }
 			    	    }
@@ -443,10 +469,20 @@ int main(void)
 			        	    {
 			        	    	static uint8_t current_count = 0;
 			        	    	current_count++;
-                                if (current_count > 8)  // time to display last screen
+                                if (current_count > 10)  // time to display last screen
                                 {
                                     current_count = 0;
                                     change_rds_display = 1;
+                                }
+			        	    }
+			        	    else if (rds_string_lenght > 32)
+			        	    {
+			        	    	static uint8_t current_count = 0;
+			        	    	current_count++;
+                                if (current_count > 10)  // time to display last screen
+                                {
+                                    current_count = 0;
+                                    change_rds_display = 5;
                                 }
 			        	    }
 			    	    }
@@ -457,14 +493,24 @@ int main(void)
 			        	    {
 			        	    	static uint8_t current_count = 0;
 			        	    	current_count++;
-                                if (current_count > 8)  // time to display last screen
+                                if (current_count > 10)  // time to display last screen
                                 {
                                     current_count = 0;
                                     change_rds_display = 1;
                                 }
 			        	    }
+			        	    else if (rds_string_lenght > 40)
+			        	    {
+			        	    	static uint8_t current_count = 0;
+			        	    	current_count++;
+                                if (current_count > 10)  // time to display last screen
+                                {
+                                    current_count = 0;
+                                    change_rds_display = 6;
+                                }
+			        	    }
 			    	    }
-			    	    else
+			        	else if (change_rds_display == 6)
 			    	    {
 			    	    	display_static_message(mess_rds_rt6);
 			    	    }
@@ -579,8 +625,15 @@ uint8_t prepare_rds_for_display(char *rds_message)
 	mess_rds_rt[last_index + 1] = '\0';
 	if (last_index <= 2)
 	{
-	      //prepare_rds_for_display(programServicePrevious);
-	      //display_static_message(mess_rds_ps);
+		mess_rds_ps[0] = programServicePrevious[0];
+		mess_rds_ps[1] = programServicePrevious[1];
+		mess_rds_ps[2] = programServicePrevious[2];
+		mess_rds_ps[3] = programServicePrevious[3];
+		mess_rds_ps[4] = programServicePrevious[4];
+		mess_rds_ps[5] = programServicePrevious[5];
+		mess_rds_ps[6] = programServicePrevious[6];
+		mess_rds_ps[7] = programServicePrevious[7];
+		mess_rds_ps[8] = '\0';
 	}
 	else if ((last_index > 2) && (last_index <= 8))
 	{
@@ -816,6 +869,7 @@ uint8_t prepare_rds_for_display(char *rds_message)
 
 void clear_buffers()
 {
+	change_rds_display = 1;
 	clear_rds_buffers(radioTextPrevious, 65);
     clear_rds_buffers(rdsRadioText, 65);
     clear_rds_buffers(mess_rds_rt, 64);
@@ -856,9 +910,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   if (htim->Instance == TIM5) {        // 3 sec
 	  freq_vol_changed_manual = false;
-	  change_rds_display++;
-	  if (change_rds_display > 6)
-		  change_rds_display = 1;
+//	  change_rds_display++;
+//	  if (change_rds_display > 6)
+//		  change_rds_display = 1;
   }
 
   /* USER CODE END Callback 1 */
