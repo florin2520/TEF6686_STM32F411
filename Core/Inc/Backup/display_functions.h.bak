@@ -17,7 +17,8 @@
 #define DISPLAY_ADDRESS 0x70<<1  //
 #define NR_OF_DIGITS 8
 //#define SCROLL_SPEED 150  // increase the number for slow
-#define SCROLL_SPEED 80000  // increase the number for slow
+//#define SCROLL_SPEED 80000  // increase the number for slow
+#define SCROLL_SPEED 70000  // increase the number for slow
 #define ONE_STEP 1
 #define FOUR_STEP 4
 
@@ -28,12 +29,14 @@ void clear_display(void);
 void disp_vol(uint32_t vol);
 void disp_freq(uint32_t freq);
 void display_static_message(char *mess);
-void show_on_display(char *message, int8_t index_of_point);
-int8_t find_decimal_point_in_string(char *message);
+void show_on_display(char *message, uint8_t index_of_point);
+uint8_t find_decimal_point_in_string(char *message);
 void display_scrolling_message(char *mess);
 void left_rotate_by_one(char arr[], int n);
 void left_rotate(char arr[], int d, int n);
 void populate_freq_array(uint32_t freq);
 void populate_vol_array(uint16_t vol);
+uint8_t find_3_space_in_string(char *message);
+
 
 #endif /* INC_DISPLAY_FUNCTIONS_H_ */

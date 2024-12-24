@@ -101,10 +101,9 @@ uint16_t encoder_reading_f, old_encoder_reading_f;
 uint16_t encoder_reading_v, old_encoder_reading_v;
 
 extern char rdsRadioText[65];
-extern char rdsProgramService[9];
 extern char rdsProgramType[17];
-
-//char display_buffer[] = "        "; // 8 caractere
+extern char rdsProgramService[50];
+//extern char display_buffer[]; // 8 caractere
 
 //char message_freq_static[13];
 
@@ -113,9 +112,10 @@ bool isFmSeekMode;
 bool isFmSeekUp;
 uint8_t current_band;
 uint8_t stereo_status; //0 mono, 1 stereo
-
+bool rds_info_ready_to_display;
+extern char programServicePrevious[50];
 extern char radioTextPrevious[65];
-extern char rdsProgramService[9];
+
 
 char message_to_scroll_1[] = "ABCD";                                  // 4+1
 char message_to_scroll_2[] = "MESAJUL2";                              // 8+1
@@ -123,28 +123,26 @@ char message_to_scroll_3[] = "ACEST MESAJ3";                          // 12+1
 char message_to_scroll_4[] = "MESSAGE TO SCROLL ON DISPLAY  ";        // 30+1
 char message_to_scroll_5[] = "MESAJUL DE AVERTIZARE CU NUMARUL 5  ";  // 36+1
 
-
-char message_1char[] = "1";                                // 1+1
-char message_2char[] = "12";                               // 2+1
-char message_3char[] = "123 ";                              // 3+1
-
-char message_5char[] = "UNU12";                                // 5+1
-char message_6char[] = "UNU123";                               // 6+1
-char message_7char[] = "UNU1234";                              // 7+1
-
-char message_9char[] = "UNU123456";                                //
-char message_10char[] = "UNU1234567";                               //
-char message_11char[] = "UNU12345678";                              //
-
 extern char mess_frequency[30];
 extern char mess_freq_static[30];
 extern char mess_volume[30];
+char mess_rds_ps[9];
+char mess_rds_rt[65];
+char mess_rds_rt1[9];
+char mess_rds_rt2[9];
+char mess_rds_rt3[9];
+char mess_rds_rt4[9];
+char mess_rds_rt5[9];
+char mess_rds_rt6[9];
+//char mess_rds_ps_rt[74];
 
-uint8_t test_timer4;
-bool freq_vol_changed_manual;
+uint8_t volatile test_timer4;
+uint8_t volatile change_rds_display;
+bool volatile freq_vol_changed_manual;
+uint8_t rds_string_lenght;
 /* USER CODE END PV */
 
-/* Private function prototypes --------------s---------------------------------*/
+/* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 void display_rds_info();
@@ -219,7 +217,7 @@ int main(void)
   uint16_t current_freq = getFrequency();
   sprintf(message_frequency, "curentFrecv = %i MHz \r", current_freq);
   print_serial2_message(message_frequency);
-
+  change_rds_display = 0;
   HAL_Delay(500);
   HAL_GPIO_WritePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin, GPIO_PIN_SET);
 
@@ -241,7 +239,7 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim5); // Enable the timer
   freq = current_freq;
   populate_freq_array(freq);
-
+  rds_info_ready_to_display = false;
   while (1)
   {
     /* USER CODE END WHILE */
@@ -252,11 +250,25 @@ int main(void)
 
       showFmSeek();
      //stereo_status = getStereoStatus(); // very very slow function!!!
-      if(freq_vol_changed_manual == false)
+      //if(isRDSReady)
       {
-    	  //HAL_TIM_Base_Start_IT(&htim5);
-    	  display_scrolling_message(mess_frequency);
+    	    if(freq_vol_changed_manual == false)
+    	    {
+    	       //display_scrolling_message(mess_rds_rt);
+    	    	//display_scrolling_message(mess_frequency);
+
+
+    	    }
       }
+
+//      if(!isRDSReady)
+//      {
+//          if(freq_vol_changed_manual == false)
+//          {
+//        	  //HAL_TIM_Base_Start_IT(&htim5);
+//        	  display_scrolling_message(mess_frequency);
+//          }
+//      }
 
 	  //display_scrolling_message(rdsProgramService);
       //display_static_message(rdsProgramService);
@@ -277,6 +289,8 @@ int main(void)
     	    writeDisplay(DISPLAY_ADDRESS);
     	    isFmSeekMode = true;
     	    isFmSeekUp = true;
+    	    clear_rds_buffers(radioTextPrevious, 65);
+    	    clear_rds_buffers(rdsRadioText, 65);
       }
 
       // IF Button seek down Is Pressed
@@ -294,6 +308,8 @@ int main(void)
 			writeDisplay(DISPLAY_ADDRESS);
   	        isFmSeekMode = true;
   	        isFmSeekUp = false;
+  	        clear_rds_buffers(radioTextPrevious, 65);
+  	        clear_rds_buffers(rdsRadioText, 65);
       }
 
 		encoder_reading_v = (TIM2->CNT>>1);
@@ -341,9 +357,11 @@ int main(void)
 		{
 			freq_vol_changed_manual = true;
 			__HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
-			clear_rds_buffers(rdsProgramType,17);
-		    clear_rds_buffers(rdsProgramService, 9);
+			clear_rds_buffers(radioTextPrevious, 65);
 		    clear_rds_buffers(rdsRadioText, 65);
+			clear_rds_buffers(rdsProgramType, 17);
+		    clear_rds_buffers(rdsProgramService, 50);
+
 
 		    freq = 8750 + encoder_reading_f;
 			setFrequency(freq);
@@ -358,11 +376,82 @@ int main(void)
 		}
 		old_encoder_reading_f = encoder_reading_f;
 
-		if(contor >= 50000)
+		if(contor >= 10000)
 		{
 			contor = 0;
-			//display_rds_info();
-			print_serial2_message("==================");
+			if(isRDSReady)
+			{
+				display_rds_info();
+				print_serial2_message("==============================");
+
+			    if(freq_vol_changed_manual == false)
+			    {
+			    	rds_string_lenght = prepare_rds_for_display(radioTextPrevious);
+			    	if(rds_info_ready_to_display)
+			    	{
+						      //prepare_rds_for_display(programServicePrevious);
+						      //display_static_message(mess_rds_ps);
+
+
+				    		if (rds_string_lenght <= 2)
+				    		{
+
+					    		//change_rds_display = 1;
+				    		}
+					    	if(change_rds_display == 0)
+					    	{
+
+					    	}
+			    	    	if(change_rds_display == 1)
+			    	    	{
+			        	    	display_static_message(mess_rds_rt1);
+			        	    	if ((rds_string_lenght > 2) && (rds_string_lenght <= 8)) // 3-8
+			        	    	{
+			        	    		change_rds_display = 1;
+			        	    	}
+			    	    	}
+			    	    	if (change_rds_display == 2)
+			    	    	{
+			        	    	display_static_message(mess_rds_rt2);
+			        	    	if ((rds_string_lenght > 8) && (rds_string_lenght <= 16)) // 9-16
+			        	    	{
+			        	    		//change_rds_display = 1;
+			        	    	}
+			    	    	}
+			    	    	if (change_rds_display == 3)
+			    	    	{
+			        	    	display_static_message(mess_rds_rt3);
+			        	    	if ((rds_string_lenght > 16) && (rds_string_lenght <= 24)) // 17-24
+			        	    	{
+			        	    		//change_rds_display = 1;
+			        	    	}
+			    	    	}
+			    	    	if (change_rds_display == 4)
+			    	    	{
+			        	    	display_static_message(mess_rds_rt4);
+			        	    	if ((rds_string_lenght > 24) && (rds_string_lenght <= 32))  // 25-32
+			        	    	{
+			        	    		//change_rds_display = 1;
+			        	    	}
+			    	    	}
+			    	    	if (change_rds_display == 5)
+			    	    	{
+			        	    	display_static_message(mess_rds_rt5);
+			        	    	if ((rds_string_lenght > 32) && (rds_string_lenght <= 40))  // 33-40
+			        	    	{
+			        	    		//change_rds_display = 1;
+			        	    	}
+			    	    	}
+			    	    	else
+			    	    	{
+			    	    		display_static_message(mess_rds_rt6);
+			    	    	}
+			    	}
+
+			    }
+			}
+
+
 			HAL_GPIO_TogglePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin);
 		}
 
@@ -458,6 +547,253 @@ void showFmSeek() {
   }
 }
 
+uint8_t prepare_rds_for_display(char *rds_message)
+{
+	//rds_info_ready_to_display = false;
+	//char message[9];
+	//uint8_t string_length = strlen(rds_message);
+
+	//strncpy(mess_rds_ps, rds_message, NR_OF_DIGITS); // copies first 8 characters from the string 'rds_message' to
+	uint8_t last_index =  find_3_space_in_string(rds_message); // sfarsitul stringului
+	strncpy(mess_rds_rt, rds_message, last_index);
+	mess_rds_rt[last_index + 1] = '\0';
+	if (last_index <= 2)
+	{
+	      //prepare_rds_for_display(programServicePrevious);
+	      //display_static_message(mess_rds_ps);
+	}
+	else if ((last_index > 2) && (last_index <= 8))
+	{
+		//change_rds_display = 1;
+		mess_rds_rt1[0] = mess_rds_rt[0];
+		mess_rds_rt1[1] = mess_rds_rt[1];
+		mess_rds_rt1[2] = mess_rds_rt[2];
+		mess_rds_rt1[3] = mess_rds_rt[3];
+		mess_rds_rt1[4] = mess_rds_rt[4];
+		mess_rds_rt1[5] = mess_rds_rt[5];
+		mess_rds_rt1[6] = mess_rds_rt[6];
+		mess_rds_rt1[7] = mess_rds_rt[7];
+		mess_rds_rt1[8] = '\0';
+	}
+	else if (last_index <= 16)
+	{
+		//change_rds_display = 2;
+		mess_rds_rt1[0] = mess_rds_rt[0];
+		mess_rds_rt1[1] = mess_rds_rt[1];
+		mess_rds_rt1[2] = mess_rds_rt[2];
+		mess_rds_rt1[3] = mess_rds_rt[3];
+		mess_rds_rt1[4] = mess_rds_rt[4];
+		mess_rds_rt1[5] = mess_rds_rt[5];
+		mess_rds_rt1[6] = mess_rds_rt[6];
+		mess_rds_rt1[7] = mess_rds_rt[7];
+		mess_rds_rt1[8] = '\0';
+
+		mess_rds_rt2[0] = mess_rds_rt[8];
+		mess_rds_rt2[1] = mess_rds_rt[9];
+		mess_rds_rt2[2] = mess_rds_rt[10];
+		mess_rds_rt2[3] = mess_rds_rt[11];
+		mess_rds_rt2[4] = mess_rds_rt[12];
+		mess_rds_rt2[5] = mess_rds_rt[13];
+		mess_rds_rt2[6] = mess_rds_rt[14];
+		mess_rds_rt2[7] = mess_rds_rt[15];
+		mess_rds_rt2[8] = '\0';
+	}
+	else if (last_index <= 24)
+	{
+		//change_rds_display = 3;
+		mess_rds_rt1[0] = mess_rds_rt[0];
+		mess_rds_rt1[1] = mess_rds_rt[1];
+		mess_rds_rt1[2] = mess_rds_rt[2];
+		mess_rds_rt1[3] = mess_rds_rt[3];
+		mess_rds_rt1[4] = mess_rds_rt[4];
+		mess_rds_rt1[5] = mess_rds_rt[5];
+		mess_rds_rt1[6] = mess_rds_rt[6];
+		mess_rds_rt1[7] = mess_rds_rt[7];
+		mess_rds_rt1[8] = '\0';
+
+		mess_rds_rt2[0] = mess_rds_rt[8];
+		mess_rds_rt2[1] = mess_rds_rt[9];
+		mess_rds_rt2[2] = mess_rds_rt[10];
+		mess_rds_rt2[3] = mess_rds_rt[11];
+		mess_rds_rt2[4] = mess_rds_rt[12];
+		mess_rds_rt2[5] = mess_rds_rt[13];
+		mess_rds_rt2[6] = mess_rds_rt[14];
+		mess_rds_rt2[7] = mess_rds_rt[15];
+		mess_rds_rt2[8] = '\0';
+
+		mess_rds_rt3[0] = mess_rds_rt[16];
+		mess_rds_rt3[1] = mess_rds_rt[17];
+		mess_rds_rt3[2] = mess_rds_rt[18];
+		mess_rds_rt3[3] = mess_rds_rt[19];
+		mess_rds_rt3[4] = mess_rds_rt[20];
+		mess_rds_rt3[5] = mess_rds_rt[21];
+		mess_rds_rt3[6] = mess_rds_rt[22];
+		mess_rds_rt3[7] = mess_rds_rt[23];
+		mess_rds_rt3[8] = '\0';
+	}
+	else if (last_index <= 32)
+	{
+		//change_rds_display = 4;
+		mess_rds_rt1[0] = mess_rds_rt[0];
+		mess_rds_rt1[1] = mess_rds_rt[1];
+		mess_rds_rt1[2] = mess_rds_rt[2];
+		mess_rds_rt1[3] = mess_rds_rt[3];
+		mess_rds_rt1[4] = mess_rds_rt[4];
+		mess_rds_rt1[5] = mess_rds_rt[5];
+		mess_rds_rt1[6] = mess_rds_rt[6];
+		mess_rds_rt1[7] = mess_rds_rt[7];
+		mess_rds_rt1[8] = '\0';
+
+		mess_rds_rt2[0] = mess_rds_rt[8];
+		mess_rds_rt2[1] = mess_rds_rt[9];
+		mess_rds_rt2[2] = mess_rds_rt[10];
+		mess_rds_rt2[3] = mess_rds_rt[11];
+		mess_rds_rt2[4] = mess_rds_rt[12];
+		mess_rds_rt2[5] = mess_rds_rt[13];
+		mess_rds_rt2[6] = mess_rds_rt[14];
+		mess_rds_rt2[7] = mess_rds_rt[15];
+		mess_rds_rt2[8] = '\0';
+
+		mess_rds_rt3[0] = mess_rds_rt[16];
+		mess_rds_rt3[1] = mess_rds_rt[17];
+		mess_rds_rt3[2] = mess_rds_rt[18];
+		mess_rds_rt3[3] = mess_rds_rt[19];
+		mess_rds_rt3[4] = mess_rds_rt[20];
+		mess_rds_rt3[5] = mess_rds_rt[21];
+		mess_rds_rt3[6] = mess_rds_rt[22];
+		mess_rds_rt3[7] = mess_rds_rt[23];
+		mess_rds_rt3[8] = '\0';
+
+		mess_rds_rt4[0] = mess_rds_rt[24];
+		mess_rds_rt4[1] = mess_rds_rt[25];
+		mess_rds_rt4[2] = mess_rds_rt[26];
+		mess_rds_rt4[3] = mess_rds_rt[27];
+		mess_rds_rt4[4] = mess_rds_rt[28];
+		mess_rds_rt4[5] = mess_rds_rt[29];
+		mess_rds_rt4[6] = mess_rds_rt[30];
+		mess_rds_rt4[7] = mess_rds_rt[31];
+		mess_rds_rt4[8] = '\0';
+	}
+	else if (last_index <= 40)
+	{
+		//change_rds_display = 5;
+		mess_rds_rt1[0] = mess_rds_rt[0];
+		mess_rds_rt1[1] = mess_rds_rt[1];
+		mess_rds_rt1[2] = mess_rds_rt[2];
+		mess_rds_rt1[3] = mess_rds_rt[3];
+		mess_rds_rt1[4] = mess_rds_rt[4];
+		mess_rds_rt1[5] = mess_rds_rt[5];
+		mess_rds_rt1[6] = mess_rds_rt[6];
+		mess_rds_rt1[7] = mess_rds_rt[7];
+		mess_rds_rt1[8] = '\0';
+
+		mess_rds_rt2[0] = mess_rds_rt[8];
+		mess_rds_rt2[1] = mess_rds_rt[9];
+		mess_rds_rt2[2] = mess_rds_rt[10];
+		mess_rds_rt2[3] = mess_rds_rt[11];
+		mess_rds_rt2[4] = mess_rds_rt[12];
+		mess_rds_rt2[5] = mess_rds_rt[13];
+		mess_rds_rt2[6] = mess_rds_rt[14];
+		mess_rds_rt2[7] = mess_rds_rt[15];
+		mess_rds_rt2[8] = '\0';
+
+		mess_rds_rt3[0] = mess_rds_rt[16];
+		mess_rds_rt3[1] = mess_rds_rt[17];
+		mess_rds_rt3[2] = mess_rds_rt[18];
+		mess_rds_rt3[3] = mess_rds_rt[19];
+		mess_rds_rt3[4] = mess_rds_rt[20];
+		mess_rds_rt3[5] = mess_rds_rt[21];
+		mess_rds_rt3[6] = mess_rds_rt[22];
+		mess_rds_rt3[7] = mess_rds_rt[23];
+		mess_rds_rt3[8] = '\0';
+
+		mess_rds_rt4[0] = mess_rds_rt[24];
+		mess_rds_rt4[1] = mess_rds_rt[25];
+		mess_rds_rt4[2] = mess_rds_rt[26];
+		mess_rds_rt4[3] = mess_rds_rt[27];
+		mess_rds_rt4[4] = mess_rds_rt[28];
+		mess_rds_rt4[5] = mess_rds_rt[29];
+		mess_rds_rt4[6] = mess_rds_rt[30];
+		mess_rds_rt4[7] = mess_rds_rt[31];
+		mess_rds_rt4[8] = '\0';
+
+		mess_rds_rt5[0] = mess_rds_rt[32];
+		mess_rds_rt5[1] = mess_rds_rt[33];
+		mess_rds_rt5[2] = mess_rds_rt[34];
+		mess_rds_rt5[3] = mess_rds_rt[35];
+		mess_rds_rt5[4] = mess_rds_rt[36];
+		mess_rds_rt5[5] = mess_rds_rt[37];
+		mess_rds_rt5[6] = mess_rds_rt[38];
+		mess_rds_rt5[7] = mess_rds_rt[39];
+		mess_rds_rt5[8] = '\0';
+	}
+	else
+	{
+		//change_rds_display = 6;
+		mess_rds_rt1[0] = mess_rds_rt[0];
+		mess_rds_rt1[1] = mess_rds_rt[1];
+		mess_rds_rt1[2] = mess_rds_rt[2];
+		mess_rds_rt1[3] = mess_rds_rt[3];
+		mess_rds_rt1[4] = mess_rds_rt[4];
+		mess_rds_rt1[5] = mess_rds_rt[5];
+		mess_rds_rt1[6] = mess_rds_rt[6];
+		mess_rds_rt1[7] = mess_rds_rt[7];
+		mess_rds_rt1[8] = '\0';
+
+		mess_rds_rt2[1] = mess_rds_rt[9];
+		mess_rds_rt2[0] = mess_rds_rt[8];
+		mess_rds_rt2[2] = mess_rds_rt[10];
+		mess_rds_rt2[3] = mess_rds_rt[11];
+		mess_rds_rt2[4] = mess_rds_rt[12];
+		mess_rds_rt2[5] = mess_rds_rt[13];
+		mess_rds_rt2[6] = mess_rds_rt[14];
+		mess_rds_rt2[7] = mess_rds_rt[15];
+		mess_rds_rt2[8] = '\0';
+
+		mess_rds_rt3[0] = mess_rds_rt[16];
+		mess_rds_rt3[1] = mess_rds_rt[17];
+		mess_rds_rt3[2] = mess_rds_rt[18];
+		mess_rds_rt3[3] = mess_rds_rt[19];
+		mess_rds_rt3[4] = mess_rds_rt[20];
+		mess_rds_rt3[5] = mess_rds_rt[21];
+		mess_rds_rt3[6] = mess_rds_rt[22];
+		mess_rds_rt3[7] = mess_rds_rt[23];
+		mess_rds_rt3[8] = '\0';
+
+		mess_rds_rt4[0] = mess_rds_rt[24];
+		mess_rds_rt4[1] = mess_rds_rt[25];
+		mess_rds_rt4[2] = mess_rds_rt[26];
+		mess_rds_rt4[3] = mess_rds_rt[27];
+		mess_rds_rt4[4] = mess_rds_rt[28];
+		mess_rds_rt4[5] = mess_rds_rt[29];
+		mess_rds_rt4[6] = mess_rds_rt[30];
+		mess_rds_rt4[7] = mess_rds_rt[31];
+		mess_rds_rt4[8] = '\0';
+
+		mess_rds_rt5[0] = mess_rds_rt[32];
+		mess_rds_rt5[1] = mess_rds_rt[33];
+		mess_rds_rt5[2] = mess_rds_rt[34];
+		mess_rds_rt5[3] = mess_rds_rt[35];
+		mess_rds_rt5[4] = mess_rds_rt[36];
+		mess_rds_rt5[5] = mess_rds_rt[37];
+		mess_rds_rt5[6] = mess_rds_rt[38];
+		mess_rds_rt5[7] = mess_rds_rt[39];
+		mess_rds_rt5[8] = '\0';
+
+		mess_rds_rt6[0] = mess_rds_rt[40];
+		mess_rds_rt6[1] = mess_rds_rt[41];
+		mess_rds_rt6[2] = mess_rds_rt[42];
+		mess_rds_rt6[3] = mess_rds_rt[43];
+		mess_rds_rt6[4] = mess_rds_rt[44];
+		mess_rds_rt6[5] = mess_rds_rt[45];
+		mess_rds_rt6[6] = mess_rds_rt[46];
+		mess_rds_rt6[7] = mess_rds_rt[47];
+		mess_rds_rt6[8] = '\0';
+	}
+	rds_info_ready_to_display = true;
+	return last_index;
+}
+
 
 /* USER CODE END 4 */
 
@@ -478,12 +814,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  if (htim->Instance == TIM4) {        // 0.5 sec
-	  test_timer4++;
+  if (htim->Instance == TIM4) {        // 2 sec
+
   }
 
   if (htim->Instance == TIM5) {        // 3 sec
 	  freq_vol_changed_manual = false;
+	  change_rds_display++;
+	  if (change_rds_display > 6)
+		  change_rds_display = 0;
   }
 
   /* USER CODE END Callback 1 */

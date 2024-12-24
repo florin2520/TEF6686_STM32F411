@@ -25,8 +25,9 @@ char str2[30];
 #define pgm_read_word(addr) (*(const unsigned short *)(addr))
 
 char rdsRadioText[65];
+//char rdsProgramService[9];
+char rdsProgramService[50];
 
-char rdsProgramService[9];
 
 uint8_t rdsAb;
 char rdsProgramType[17];
@@ -41,8 +42,10 @@ struct RdsInfo rdsInfo;
 
 
 char programTypePrevious[17] = "                ";
-char programServicePrevious[9];
+//char programServicePrevious[9];
+char programServicePrevious[50];
 char radioTextPrevious[65];
+
 
 
 
@@ -1060,6 +1063,7 @@ void showPTY()
 void showPS()
 {
   //if ((isRDSReady == 1) && (strlen(rdsInfo.programService) == 8) && !str_cmp(rdsInfo.programService, programServicePrevious, 8))
+
   {
     //Serial.print("-=[ ");
     //Serial.print(rdsInfo.programService);
@@ -1076,7 +1080,7 @@ void showPS()
 
 void showRadioText()
 {
-  //if ((isRDSReady == 1) && !str_cmp(rdsInfo.radioText, radioTextPrevious, 65))
+ // if ((isRDSReady == 1) && !str_cmp(rdsInfo.radioText, radioTextPrevious, 65))
   {
     //Serial.print(rdsInfo.radioText);
     strcpy(radioTextPrevious, rdsInfo.radioText);
@@ -1104,7 +1108,7 @@ void clear_rds_buffers(char* str1, uint8_t length)
 {
 	  for (int i = 0; i < length; i++)
 	  {
-        str1[i] = ' ';
+        str1[i] = '\0';
 	  }
 
 }

@@ -36,5 +36,7 @@ void left_rotate_by_one(char arr[], int n);
 void left_rotate(char arr[], int d, int n);
 void populate_freq_array(uint32_t freq);
 void populate_vol_array(uint16_t vol);
+uint8_t find_3_space_in_string(char *message);
+
 
 #endif /* INC_DISPLAY_FUNCTIONS_H_ */

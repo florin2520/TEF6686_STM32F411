@@ -526,7 +526,7 @@ typedef enum
 
 
 uint16_t devTEF668x_Set_Cmd(TEF668x_MODULE module, uint8_t cmd, uint16_t len,...);
-static uint16_t devTEF668x_Get_Cmd(TEF668x_MODULE module, uint8_t cmd, uint8_t *receive,uint16_t len);
+//static uint16_t devTEF668x_Get_Cmd(TEF668x_MODULE module, uint8_t cmd, uint8_t *receive,uint16_t len);
 
 uint16_t devTEF668x_Radio_Tune_To (uint8_t fm,uint16_t mode,uint16_t frequency );
 uint16_t devTEF668x_Radio_Get_Quality_Status (uint8_t fm,uint8_t *status);

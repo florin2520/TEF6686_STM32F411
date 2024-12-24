@@ -56,12 +56,14 @@ void disp_freq(uint32_t freq)
 		uint16_t freq_3 = f_1 %  100;
 		uint16_t freq_4 = freq_3 / 10;   // a patra cifra
 
-		writeDigitAscii(0, 'F', false);
-		writeDigitAscii(1, ' ', false);
-		writeDigitAscii(2, freq_0 + 48, false);
-		writeDigitAscii(3, freq_1 + 48, false);
-		writeDigitAscii(4, freq_2 + 48, true);
-		writeDigitAscii(5, freq_4 + 48, false);
+		writeDigitAscii(0, freq_0 + 48, false);
+		writeDigitAscii(1, freq_1 + 48, false);
+		writeDigitAscii(2, freq_2 + 48, true);
+		writeDigitAscii(3, freq_4 + 48, false);
+		writeDigitAscii(4, ' ', false);
+		writeDigitAscii(5, 'M', false);
+		writeDigitAscii(6, 'H', false);
+		writeDigitAscii(7, 'Z', false);
 		writeDisplay(DISPLAY_ADDRESS);
 	}
 	else
@@ -73,22 +75,22 @@ void disp_freq(uint32_t freq)
 		uint16_t freq_2 = f_1 / 10;   // a treia cifra  (*cu punct jos)
 		//uint16_t freq_3 = f_1 % 100;   // a patra cifra
 
-		writeDigitAscii(0, 'F', false);
-		writeDigitAscii(1, ' ', false);
-		writeDigitAscii(2, ' ', false);
-		writeDigitAscii(3, freq_0 + 48, false);
-		writeDigitAscii(4, freq_1 + 48, true);
-		writeDigitAscii(5, freq_2+ 48, false);
+		writeDigitAscii(0, ' ', false);
+		writeDigitAscii(1, freq_0 + 48, false);
+		writeDigitAscii(2, freq_1 + 48, true);
+		writeDigitAscii(3, freq_2 + 48, false);
+		writeDigitAscii(4, ' ', false);
+		writeDigitAscii(5, 'M', false);
+		writeDigitAscii(6, 'H', false);
+		writeDigitAscii(7, 'Z', false);
 		writeDisplay(DISPLAY_ADDRESS);
 	}
-
-
 }
 void display_static_message(char *mess)
 {
-  uint8_t string_length = strlen(mess);
+ // uint8_t string_length = strlen(mess);
 
-  //if(string_length == 8)
+//  if(string_length <= 8)
   {
 	writeDigitAscii(0, mess[0], false);
 	writeDigitAscii(1, mess[1], false);
@@ -100,20 +102,20 @@ void display_static_message(char *mess)
 	writeDigitAscii(7, mess[7], false);
 	writeDisplay(DISPLAY_ADDRESS);
   }
- // else if((string_length >= 5)&&(string_length < 9))  //
-  {
-
-
-  }
- // else if(string_length > 12)
-  {
-
-  }
+//  else if((string_length > 9)&&(string_length < 17))  //
+//  {
+//
+//
+//  }
+//  else if(string_length > )
+//  {
+//
+//  }
 
 }
-void show_on_display(char *message, int8_t index_of_point)
+void show_on_display(char *message, uint8_t index_of_point)
 {
-	if(index_of_point >= 0)
+	if(index_of_point < 9)
 	{
 		switch (index_of_point)
 		{
@@ -231,7 +233,7 @@ void show_on_display(char *message, int8_t index_of_point)
 		writeDisplay(DISPLAY_ADDRESS);
 	}
 }
-int8_t find_decimal_point_in_string(char *message)  // TODO de verificat
+uint8_t find_decimal_point_in_string(char *message)  // TODO de verificat
 {
 	// 15 means no point to display
 	uint8_t string_length = strlen(message);
@@ -246,11 +248,10 @@ int8_t find_decimal_point_in_string(char *message)  // TODO de verificat
         }
         else
         {
-            count_digits++;
+            count_digits++;         // cate cifre apar pe display la un moment dat
             index_last_digit = k;
         }
     }
-
 
     if (count_digits <= 1)
     {
@@ -261,6 +262,11 @@ int8_t find_decimal_point_in_string(char *message)  // TODO de verificat
     {
         if (index_last_digit > 6)
         {
+          if((message[index_last_digit - 2] == ' ') && (message[index_last_digit - 1] != '1'))
+          {
+        	 return 7;                            /// test ok
+          }
+
          if(message[index_last_digit - 1] == '1')
              return 15;
          else
@@ -275,17 +281,18 @@ int8_t find_decimal_point_in_string(char *message)  // TODO de verificat
     {
     	if(message[index_last_digit - 2] == '0')
     	{
-    		return index_last_digit - 1;
+    		return index_last_digit - 1; /// nu
     	}
     	if(index_last_digit > 6)
     	{
     		if(message[index_last_digit - 1] == '0')
     			return index_last_digit;
     		else
-    			return index_last_digit - 1;
+    			return index_last_digit - 1; //nu
+
     	}
     	else
-            return index_last_digit - 1;
+            return index_last_digit - 1; ///// nu
     }
 
     else if (count_digits == 4)
@@ -310,8 +317,7 @@ void display_scrolling_message(char *mess)
 		strncpy(display_buffer, mess, NR_OF_DIGITS);   // copies first 8 characters from the string 'mess' to 'display_buffer'
 		if(current_count > SCROLL_SPEED)
 		{
-			int8_t index_of_point = find_decimal_point_in_string(display_buffer);
-			//indexxx = find_decimal_point_in_string(display_buffer);  // test
+			uint8_t index_of_point = find_decimal_point_in_string(display_buffer);
 			show_on_display(display_buffer, index_of_point);
 			left_rotate(mess, ONE_STEP, string_length);
 			current_count = 0;
@@ -328,7 +334,7 @@ void display_scrolling_message(char *mess)
 		}
 		if(current_count > SCROLL_SPEED)
 		{
-			int8_t index_of_point = find_decimal_point_in_string(display_buffer);
+			uint8_t index_of_point = find_decimal_point_in_string(display_buffer);
 			show_on_display(display_buffer, index_of_point);
 			left_rotate(display_buffer, ONE_STEP, NR_OF_DIGITS);           // start message from right side
 			current_count = 0;
@@ -355,15 +361,17 @@ void left_rotate(char arr[], int d, int n)
 
 void populate_freq_array(uint32_t freq)
 {
-	//char message_frequency[] = "FREQ: 1045 MHZ  ";
+	// atentie modificarea mess_frequency poate duce la refacerea functiei
+	//   uint8_t find_decimal_point_in_string()
 
-	uint16_t freq_0 = freq / 1000; // prima cifra
-	uint16_t f_0 = freq % 1000;
-	uint16_t freq_1 = f_0 / 100;   // a doua cifra
-	uint16_t f_1 =  f_0 % 100;
-	uint16_t freq_2 = f_1 / 10;   // a treia cifra  (*cu punct jos)
-	uint16_t freq_3 = f_1 % 10;   // a patra cifra
 
+	uint16_t freq_0 = freq / 10000; // prima cifra
+	uint16_t f_0 = freq % 10000;
+	uint16_t freq_1 = f_0 / 1000;   // a doua cifra
+	uint16_t f_1 =  f_0 % 1000;
+	uint16_t freq_2 = f_1 / 100;   // a treia cifra  (*cu punct jos)
+	uint16_t f_2 =  f_1 % 100;
+	uint16_t freq_3 = f_2 / 10;   // a patra cifra
 
 	mess_frequency[0] = 'F';
 	mess_frequency[1] = 'R';
@@ -376,7 +384,6 @@ void populate_freq_array(uint32_t freq)
 	mess_frequency[8] = 'Y';
 	mess_frequency[9] = ' ';
 
-
 	//message_frequency[5] = freq_0 + 48;
 	if(freq_0 + 48 == '0')
 	{
@@ -387,14 +394,18 @@ void populate_freq_array(uint32_t freq)
 		mess_frequency[10] = freq_0 + 48;
 	}
     mess_frequency[11] = freq_1 + 48;
-    mess_frequency[12] = freq_2 + 48; // punct
-	mess_frequency[13] = freq_3 + 48;
+    mess_frequency[12] = freq_2 + 48; //
+	mess_frequency[13] = freq_3 + 48; //
 	mess_frequency[14] = ' ';
 	mess_frequency[15] = 'M';
 	mess_frequency[16] = 'H';
 	mess_frequency[17] = 'Z';
 	mess_frequency[18] = ' ';
 	mess_frequency[19] = ' ';
+	mess_frequency[20] = '\0';
+
+
+
 
 	mess_freq_static[0] = 'F';
 	mess_freq_static[1] = ' ';
@@ -409,7 +420,7 @@ void populate_freq_array(uint32_t freq)
 	}
 	mess_freq_static[3] = freq_1 + 48;
 	mess_freq_static[4] = freq_2 + 48; // punct;
-	mess_freq_static[5] = freq_3 + 48;
+	//mess_freq_static[5] = freq_3 + 48;
 	mess_freq_static[6] = ' ';
 	mess_freq_static[7] = 'M';
 	mess_freq_static[8] = 'H';
@@ -445,7 +456,26 @@ void populate_vol_array(uint16_t vol)
 }
 
 
+uint8_t find_3_space_in_string(char *message)
+{
 
+    int i=0;
+    while (message[i]!='\0')
+    {
+        if (message[i]==' ')
+        {
+            if (message[i+1]==' ')
+            {
+               if (message[i+2]==' ')
+               {
+                  break;
+               }
+            }
+        }
+        i++;
+    }
+    return i + 2;
+}
 //void disp_static(char *message) // TODO
 //{
 //	uint8_t string_length = strlen(message);
