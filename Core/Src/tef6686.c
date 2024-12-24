@@ -1108,7 +1108,8 @@ void clear_rds_buffers(char* str1, uint8_t length)
 {
 	  for (int i = 0; i < length; i++)
 	  {
-        str1[i] = '\0';
+        //str1[i] = '\0';
+		  str1[i] = ' ';
 	  }
 
 }
