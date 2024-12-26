@@ -3630,12 +3630,12 @@ unsigned char Tuner_WriteBuffer(uint8_t *buf, uint16_t len)
   //Serial.println("Wire.write");
   //r = Wire.endTransmission();
    //r = HAL_I2C_Master_Transmit(&hi2c1, (uint16_t)DSP_I2C, (uint8_t*)buf, len, 1500);
-   r = HAL_I2C_Master_Transmit(&hi2c1, (uint16_t)DSP_I2C, (uint8_t*)buf, len, 10);
+   r = HAL_I2C_Master_Transmit(&hi2c1, (uint16_t)DSP_I2C, (uint8_t*)buf, len, 1000);
   //Serial.println("Wire.endTransmission:");
   //Serial.print(r);
   //Serial.println();
   //delay(1);
-  HAL_Delay(1);
+  HAL_Delay(2);
   //return (r == 0) ? 1 : 0;
   return (r == HAL_OK) ? 1 : 0;
 }

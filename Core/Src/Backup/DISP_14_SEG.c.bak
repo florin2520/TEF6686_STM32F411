@@ -171,7 +171,7 @@ uint16_t displaybuffer[8];
 static const uint16_t alphafonttable[]  =
 {
 //0 DP N M L K J H G2 G1 F E D C B A
-0b0000000000000001,
+0b0000000000000000,  //    nothing to display for null
 0b0000000000000010,
 0b0000000000000100,
 0b0000000000001000,

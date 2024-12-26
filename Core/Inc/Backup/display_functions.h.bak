@@ -18,7 +18,8 @@
 #define NR_OF_DIGITS 8
 //#define SCROLL_SPEED 150  // increase the number for slow
 //#define SCROLL_SPEED 80000  // increase the number for slow
-#define SCROLL_SPEED 70000  // increase the number for slow
+//#define SCROLL_SPEED 70000  // increase the number for slow
+#define SCROLL_SPEED 7   //
 #define ONE_STEP 1
 #define FOUR_STEP 4
 

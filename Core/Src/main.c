@@ -359,8 +359,8 @@ int main(void)
 		if(contor >= 10000)
 		{
 			contor = 0;
-			display_rds_info();
-			print_serial2_message("==============================");
+			//display_rds_info();
+			//print_serial2_message("==============================");
 			if(isRDSReady)
 			{
 			    if(freq_vol_changed_manual == false)
@@ -1000,6 +1000,97 @@ void clear_buffers()
     clear_rds_buffers(mess_rds_rt6, 8);
 }
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	 uint16_t current_freq;
+	 if(GPIO_Pin == GPIO_PIN_9)                     // M1
+	 {
+	    print_serial2_message("M1 pressed");
+	    freq_vol_changed_manual = true;
+	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
+	    clear_buffers();
+	    //freq = 8750 + encoder_reading_f;
+	    freq = 8870;
+	    setFrequency(freq);
+	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
+	    print_serial2_message(message_frequency);
+	    clear_display();
+	    current_freq = getFrequency();
+	    disp_freq(current_freq);
+	    freq = current_freq;
+	    populate_freq_array(freq);
+	 }
+	 if(GPIO_Pin == GPIO_PIN_10)                 // M2
+	 {
+	    print_serial2_message("M2 pressed");
+	    freq_vol_changed_manual = true;
+	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
+	    clear_buffers();
+	    //freq = 8750 + encoder_reading_f;
+	    freq = 9480;
+	    setFrequency(freq);
+	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
+	    print_serial2_message(message_frequency);
+	    clear_display();
+	    current_freq = getFrequency();
+	    disp_freq(current_freq);
+	    freq = current_freq;
+	    populate_freq_array(freq);
+	 }
+
+	 if(GPIO_Pin == GPIO_PIN_11)                // M3
+	 {
+	    print_serial2_message("M3 pressed");
+	    freq_vol_changed_manual = true;
+	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
+	    clear_buffers();
+	    //freq = 8750 + encoder_reading_f;
+	    freq = 9800;
+	    setFrequency(freq);
+	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
+	    print_serial2_message(message_frequency);
+	    clear_display();
+	    current_freq = getFrequency();
+	    disp_freq(current_freq);
+	    freq = current_freq;
+	    populate_freq_array(freq);
+	 }
+	 if(GPIO_Pin == GPIO_PIN_12)               // M4
+	 {
+	    print_serial2_message("M4 pressed");
+	    freq_vol_changed_manual = true;
+	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
+	    clear_buffers();
+	    //freq = 8750 + encoder_reading_f;
+	    freq = 10290;
+	    setFrequency(freq);
+	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
+	    print_serial2_message(message_frequency);
+	    clear_display();
+	    current_freq = getFrequency();
+	    disp_freq(current_freq);
+	    freq = current_freq;
+	    populate_freq_array(freq);
+	 }
+	 if(GPIO_Pin == GPIO_PIN_15)                 // M5
+	 {
+	    print_serial2_message("M5 pressed");
+	    freq_vol_changed_manual = true;
+	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
+	    clear_buffers();
+	    //freq = 8750 + encoder_reading_f;
+	    freq = 9200;
+	    setFrequency(freq);
+	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
+	    print_serial2_message(message_frequency);
+	    clear_display();
+	    current_freq = getFrequency();
+	    disp_freq(current_freq);
+	    freq = current_freq;
+	    populate_freq_array(freq);
+	 }
+}
+
 
 /* USER CODE END 4 */
 
@@ -1021,7 +1112,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
   /* USER CODE BEGIN Callback 1 */
   if (htim->Instance == TIM4) {        // 2 sec
-
+	  test_timer4++;
   }
 
   if (htim->Instance == TIM5) {        // 3 sec
@@ -1041,6 +1132,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
+	print_serial2_message("!!! Error_Handler !!!!!!");
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
   while (1)
