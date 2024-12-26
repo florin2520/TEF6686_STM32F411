@@ -251,16 +251,6 @@ int main(void)
 
       showFmSeek();
      //stereo_status = getStereoStatus(); // very very slow function!!!
-      //if(isRDSReady)
-      {
-    	    if(freq_vol_changed_manual == false)
-    	    {
-    	       //display_scrolling_message(mess_rds_rt);
-    	    	//display_scrolling_message(mess_frequency);
-
-
-    	    }
-      }
 
 //      if(!isRDSReady)
 //      {
@@ -270,10 +260,6 @@ int main(void)
 //        	  display_scrolling_message(mess_frequency);
 //          }
 //      }
-
-	  //display_scrolling_message(rdsProgramService);
-      //display_static_message(rdsProgramService);
-
 
       // IF Button seek up Is Pressed
       if(HAL_GPIO_ReadPin (GPIOC, GPIO_PIN_14) == 0)  // seek up  butonul de freq
@@ -380,18 +366,15 @@ int main(void)
 			    if(freq_vol_changed_manual == false)
 			    {
 			    	rds_string_lenght = prepare_rds_for_display(radioTextPrevious);
-
 			    	if(rds_info_ready_to_display)
 			    	{
-						      //prepare_rds_for_display(programServicePrevious);
-						      //display_static_message(mess_rds_ps);
 			    		 if(rds_string_lenght <= 2)
 			    		 {
 						     change_rds_display = 1;
 			    		 }
 			    	     if(change_rds_display == 1)
 			    	     {
-			    	    	if(rds_string_lenght <= 2)
+			    	    	if(rds_string_lenght <= 2)  // if no rds data show ps
 			    	    	{
 							     prepare_rds_for_display(programServicePrevious);
 							     display_static_message(mess_rds_ps);
@@ -416,7 +399,30 @@ int main(void)
 			    	    }
 			    	    else if (change_rds_display == 2)
 			    	    {
-			        	    display_static_message(mess_rds_rt2);
+//			    	    	if ((mess_rds_rt2[0] ==
+//			    	    		 mess_rds_rt2[1] ==
+//			    	    		 mess_rds_rt2[2] ==
+//			    	    		 mess_rds_rt2[3] ==
+//					    	     mess_rds_rt2[4] ==
+//					    	     mess_rds_rt2[5] ==
+//					    	     mess_rds_rt2[6] ==
+//					    	     mess_rds_rt2[7] == ' ') ||
+//					    	    (mess_rds_rt2[0] ==
+//					    	     mess_rds_rt2[1] ==
+//					    	     mess_rds_rt2[2] ==
+//					    	     mess_rds_rt2[3] ==
+//					    	     mess_rds_rt2[4] ==
+//					    	     mess_rds_rt2[5] ==
+//					    	     mess_rds_rt2[6] ==
+//					    	     mess_rds_rt2[7] == '\0'))
+//			    	    	{
+//			    	    		change_rds_display = 3;
+//			    	    	}
+//			    	    	else
+//			    	    	{
+//			    	    		 display_static_message(mess_rds_rt2);
+//			    	    	}
+			    	        display_static_message(mess_rds_rt2);
 			        	    if ((rds_string_lenght > 8) && (rds_string_lenght <= 16)) // 9-16
 			        	    {
 			        	    	static uint8_t current_count = 0;
@@ -440,6 +446,29 @@ int main(void)
 			    	    }
 			    	    else if (change_rds_display == 3)
 			    	    {
+//			    	    	if ((mess_rds_rt3[0] ==
+//			    	    		 mess_rds_rt3[1] ==
+//			    	    		 mess_rds_rt3[2] ==
+//			    	    		 mess_rds_rt3[3] ==
+//					    	     mess_rds_rt3[4] ==
+//					    	     mess_rds_rt3[5] ==
+//					    	     mess_rds_rt3[6] ==
+//					    	     mess_rds_rt3[7] == ' ') ||
+//					    	    (mess_rds_rt3[0] ==
+//					    	     mess_rds_rt3[1] ==
+//					    	     mess_rds_rt3[2] ==
+//					    	     mess_rds_rt3[3] ==
+//					    	     mess_rds_rt3[4] ==
+//					    	     mess_rds_rt3[5] ==
+//					    	     mess_rds_rt3[6] ==
+//					    	     mess_rds_rt3[7] == '\0'))
+//			    	    	{
+//			    	    		change_rds_display = 4;
+//			    	    	}
+//			    	    	else
+//			    	    	{
+//			    	    		 display_static_message(mess_rds_rt3);
+//			    	    	}
 			        	    display_static_message(mess_rds_rt3);
 			        	    if ((rds_string_lenght > 16) && (rds_string_lenght <= 24)) // 17-24
 			        	    {
@@ -464,6 +493,29 @@ int main(void)
 			    	    }
 			    	    else if (change_rds_display == 4)
 			    	    {
+//			    	    	if ((mess_rds_rt4[0] ==
+//			    	    		 mess_rds_rt4[1] ==
+//			    	    		 mess_rds_rt4[2] ==
+//			    	    		 mess_rds_rt4[3] ==
+//					    	     mess_rds_rt4[4] ==
+//					    	     mess_rds_rt4[5] ==
+//					    	     mess_rds_rt4[6] ==
+//					    	     mess_rds_rt4[7] == ' ') ||
+//					    	    (mess_rds_rt4[0] ==
+//					    	     mess_rds_rt4[1] ==
+//					    	     mess_rds_rt4[2] ==
+//					    	     mess_rds_rt4[3] ==
+//					    	     mess_rds_rt4[4] ==
+//					    	     mess_rds_rt4[5] ==
+//					    	     mess_rds_rt4[6] ==
+//					    	     mess_rds_rt4[7] == '\0'))
+//			    	    	{
+//			    	    		change_rds_display = 5;
+//			    	    	}
+//			    	    	else
+//			    	    	{
+//			    	    		 display_static_message(mess_rds_rt4);
+//			    	    	}
 			        	    display_static_message(mess_rds_rt4);
 			        	    if ((rds_string_lenght > 24) && (rds_string_lenght <= 32))  // 25-32
 			        	    {
@@ -488,6 +540,29 @@ int main(void)
 			    	    }
 			    	    else if (change_rds_display == 5)
 			    	    {
+//			    	    	if ((mess_rds_rt5[0] ==
+//			    	    		 mess_rds_rt5[1] ==
+//			    	    		 mess_rds_rt5[2] ==
+//			    	    		 mess_rds_rt5[3] ==
+//					    	     mess_rds_rt5[4] ==
+//					    	     mess_rds_rt5[5] ==
+//					    	     mess_rds_rt5[6] ==
+//					    	     mess_rds_rt5[7] == ' ') ||
+//					    	    (mess_rds_rt5[0] ==
+//					    	     mess_rds_rt5[1] ==
+//					    	     mess_rds_rt5[2] ==
+//					    	     mess_rds_rt5[3] ==
+//					    	     mess_rds_rt5[4] ==
+//					    	     mess_rds_rt5[5] ==
+//					    	     mess_rds_rt5[6] ==
+//					    	     mess_rds_rt5[7] == '\0'))
+//			    	    	{
+//			    	    		change_rds_display = 6;
+//			    	    	}
+//			    	    	else
+//			    	    	{
+//			    	    		 display_static_message(mess_rds_rt5);
+//			    	    	}
 			        	    display_static_message(mess_rds_rt5);
 			        	    if ((rds_string_lenght > 32) && (rds_string_lenght <= 40))  // 33-40
 			        	    {
@@ -512,11 +587,52 @@ int main(void)
 			    	    }
 			        	else if (change_rds_display == 6)
 			    	    {
+//			    	    	if ((mess_rds_rt6[0] ==
+//			    	    		 mess_rds_rt6[1] ==
+//			    	    		 mess_rds_rt6[2] ==
+//			    	    		 mess_rds_rt6[3] ==
+//					    	     mess_rds_rt6[4] ==
+//					    	     mess_rds_rt6[5] ==
+//					    	     mess_rds_rt6[6] ==
+//					    	     mess_rds_rt6[7] == ' ') ||
+//					    	    (mess_rds_rt6[0] ==
+//					    	     mess_rds_rt6[1] ==
+//					    	     mess_rds_rt6[2] ==
+//					    	     mess_rds_rt6[3] ==
+//					    	     mess_rds_rt6[4] ==
+//					    	     mess_rds_rt6[5] ==
+//					    	     mess_rds_rt6[6] ==
+//					    	     mess_rds_rt6[7] == '\0'))
+//			    	    	{
+//			    	    		change_rds_display = 1;
+//			    	    	}
+//			    	    	else
+//			    	    	{
+//			    	    		 display_static_message(mess_rds_rt6);
+//			    	    	}
 			    	    	display_static_message(mess_rds_rt6);
+		        	    	static uint8_t current_count = 0;
+		        	    	current_count++;
+                            if (current_count > 10)  // time to display last screen
+                            {
+                                current_count = 0;
+                                change_rds_display = 1;
+                            }
 			    	    }
 			    	}
 
 			    }
+			}
+			else  // if(!isRDSReady)
+			{
+                if((programServicePrevious[0] < 32) && (radioTextPrevious[0] < 32))  // if no information from rds
+                {
+            	    if(freq_vol_changed_manual == false)
+            	    {
+            	    	display_scrolling_message(mess_frequency);
+            	    }
+
+                }
 			}
 
 			HAL_GPIO_TogglePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin);
