@@ -8,7 +8,7 @@
  * animatii display
  * memorii posturi
  * de ce dureaza bucla while principala atat de mult ??
- *
+ * eroare afisare punct 90.0
  *
  *
  *
@@ -359,8 +359,8 @@ int main(void)
 		if(contor >= 10000)
 		{
 			contor = 0;
-			//display_rds_info();
-			//print_serial2_message("==============================");
+			display_rds_info();
+			print_serial2_message("==============================");
 			if(isRDSReady)
 			{
 			    if(freq_vol_changed_manual == false)
@@ -1009,13 +1009,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	    freq_vol_changed_manual = true;
 	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
 	    clear_buffers();
-	    //freq = 8750 + encoder_reading_f;
 	    freq = 8870;
 	    setFrequency(freq);
-	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
-	    print_serial2_message(message_frequency);
+//	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
+//	    print_serial2_message(message_frequency);
 	    clear_display();
 	    current_freq = getFrequency();
+	    TIM3->CNT = ((current_freq - 8750)/10)<<1;
 	    disp_freq(current_freq);
 	    freq = current_freq;
 	    populate_freq_array(freq);
@@ -1026,13 +1026,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	    freq_vol_changed_manual = true;
 	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
 	    clear_buffers();
-	    //freq = 8750 + encoder_reading_f;
 	    freq = 9480;
 	    setFrequency(freq);
-	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
-	    print_serial2_message(message_frequency);
+//	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
+//	    print_serial2_message(message_frequency);
 	    clear_display();
 	    current_freq = getFrequency();
+	    TIM3->CNT = ((current_freq - 8750)/10)<<1;
 	    disp_freq(current_freq);
 	    freq = current_freq;
 	    populate_freq_array(freq);
@@ -1044,13 +1044,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	    freq_vol_changed_manual = true;
 	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
 	    clear_buffers();
-	    //freq = 8750 + encoder_reading_f;
 	    freq = 9800;
 	    setFrequency(freq);
-	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
-	    print_serial2_message(message_frequency);
+//	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
+//	    print_serial2_message(message_frequency);
 	    clear_display();
 	    current_freq = getFrequency();
+	    TIM3->CNT = ((current_freq - 8750)/10)<<1;
 	    disp_freq(current_freq);
 	    freq = current_freq;
 	    populate_freq_array(freq);
@@ -1061,13 +1061,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	    freq_vol_changed_manual = true;
 	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
 	    clear_buffers();
-	    //freq = 8750 + encoder_reading_f;
 	    freq = 10290;
 	    setFrequency(freq);
-	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
-	    print_serial2_message(message_frequency);
+//	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
+//	    print_serial2_message(message_frequency);
 	    clear_display();
 	    current_freq = getFrequency();
+	    TIM3->CNT = ((current_freq - 8750)/10)<<1;
 	    disp_freq(current_freq);
 	    freq = current_freq;
 	    populate_freq_array(freq);
@@ -1078,13 +1078,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	    freq_vol_changed_manual = true;
 	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
 	    clear_buffers();
-	    //freq = 8750 + encoder_reading_f;
 	    freq = 9200;
 	    setFrequency(freq);
-	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
-	    print_serial2_message(message_frequency);
+//	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
+//	    print_serial2_message(message_frequency);
 	    clear_display();
 	    current_freq = getFrequency();
+	    TIM3->CNT = ((current_freq - 8750)/10)<<1;
 	    disp_freq(current_freq);
 	    freq = current_freq;
 	    populate_freq_array(freq);

@@ -3615,6 +3615,7 @@ uint16_t devTEF668x_APPL_Get_LastWrite(uint8_t *buf,uint16_t len)
 //unsigned char Tuner_WriteBuffer(unsigned char *buf, uint16_t len)
 unsigned char Tuner_WriteBuffer(uint8_t *buf, uint16_t len)
 {
+  uint32_t a;
   //uint16_t i;
   //uint8_t r;
   HAL_StatusTypeDef r;
@@ -3635,7 +3636,12 @@ unsigned char Tuner_WriteBuffer(uint8_t *buf, uint16_t len)
   //Serial.print(r);
   //Serial.println();
   //delay(1);
-  HAL_Delay(2);
+  //HAL_Delay(2); // face probleme
+   for (uint32_t i = 0; i < 50000; i++)
+   {
+     a = i;
+     a++;
+   }
   //return (r == 0) ? 1 : 0;
   return (r == HAL_OK) ? 1 : 0;
 }
