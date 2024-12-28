@@ -49,6 +49,7 @@
 #include "tef6686.h"
 #include "I2C_reg.h"
 #include "display_functions.h"
+#include "W25Qxx.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -140,6 +141,7 @@ uint8_t volatile test_timer4;
 uint8_t volatile change_rds_display;
 bool volatile freq_vol_changed_manual;
 uint8_t rds_string_lenght;
+uint32_t ID = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -241,6 +243,16 @@ int main(void)
   populate_freq_array(freq);
  // rds_info_ready_to_display = false;
   change_rds_display = 1;
+
+  W25Q_Reset();
+  ID = W25Q_ReadID();
+
+
+//  W25qxx_Init();
+//  ID = W25qxx_ReadID();
+  print_serial2_message("==============================-------||||---------|----|-");
+  print_serial2_message_number("W25Q_ReadID = ", ID);
+  print_serial2_message("==============================-------||||-------------");
   while (1)
   {
     /* USER CODE END WHILE */
@@ -1078,7 +1090,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	    freq_vol_changed_manual = true;
 	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
 	    clear_buffers();
-	    freq = 9200;
+	    freq = 10760;
 	    setFrequency(freq);
 //	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
 //	    print_serial2_message(message_frequency);
