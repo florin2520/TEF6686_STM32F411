@@ -195,6 +195,9 @@ int main(void)
   MX_TIM5_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+  W25Q_Reset();       // trebuie apelat aici, nu inainte de while
+  ID = W25Q_ReadID();
+
   HAL_TIM_Encoder_Start_IT(&htim2, TIM_CHANNEL_ALL);  // volum
   HAL_TIM_Encoder_Start_IT(&htim3, TIM_CHANNEL_ALL);  // frecventa
   /* USER CODE END 2 */
@@ -248,8 +251,8 @@ int main(void)
   //ID = W25Q_ReadID();
 
 
-  W25qxx_Init();
-  ID = W25qxx_ReadID();
+//  W25qxx_Init();
+//  ID = W25qxx_ReadID();
   print_serial2_message("==============================-------||||---------|----|-");
   print_serial2_message_number("W25Q_ReadID = ", ID);
   print_serial2_message("==============================-------||||-------------");
@@ -648,6 +651,10 @@ int main(void)
 			}
 
 			HAL_GPIO_TogglePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin);
+			  ID = W25Q_ReadID();
+			  print_serial2_message("==============================-------||||---------|----|-");
+			  print_serial2_message_number("W25Q_ReadID = ", ID);
+			  print_serial2_message("==============================-------||||-------------");
 		}
 
   }

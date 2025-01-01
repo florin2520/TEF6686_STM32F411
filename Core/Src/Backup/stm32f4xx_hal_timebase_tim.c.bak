@@ -45,12 +45,15 @@ HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
 
   uint32_t              uwPrescalerValue = 0U;
   uint32_t              pFLatency;
+
   HAL_StatusTypeDef     status;
 
   /* Enable TIM1 clock */
   __HAL_RCC_TIM1_CLK_ENABLE();
-  /* Get clock configuration */
+
+/* Get clock configuration */
   HAL_RCC_GetClockConfig(&clkconfig, &pFLatency);
+
   /* Compute TIM1 clock */
       uwTimclock = HAL_RCC_GetPCLK2Freq();
 

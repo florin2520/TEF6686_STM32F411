@@ -1,0 +1,28 @@
+Memorie posturi
+
+
+We first calculate the memory address using the sector number.
+ Each sector contains 16 pages and each page contains 256 bytes.
+The memory address could be 24bit / 32bit depending on the memory size of the device.
+We use different commands for both address sets. 0x20 for the 24 bit memory addresses and 0x21 for the devices with 32bit memory addresses.
+Before sending the erase command, we enable the write.
+To erase the sector we send the instruction followed by the memory address.
+The sector erase time is 400ms, so we wait for the erase to complete.
+At last disable the write.
+
+
+Function  | Sector |  Page  | Bytes  |
+-----------------------------------------
+M1        |   0    |    0   |  1,2   |
+-----------------------------------------
+M2        |   0    |    0   |  3,4   |
+-----------------------------------------
+M3        |   0    |    0   |  5,6   |
+-----------------------------------------
+M4        |   0    |    0   |  7,8   |
+-----------------------------------------
+M5        |   0    |    0   |  9,10  |
+-----------------------------------------
+          |        |        |        |
+-----------------------------------------
+          |        |        |        |

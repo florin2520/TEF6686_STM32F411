@@ -117,12 +117,17 @@ bool rds_info_ready_to_display;
 extern char programServicePrevious[50];
 extern char radioTextPrevious[65];
 
-
 char message_to_scroll_1[] = "ABCD";                                  // 4+1
 char message_to_scroll_2[] = "MESAJUL2";                              // 8+1
 char message_to_scroll_3[] = "ACEST MESAJ3";                          // 12+1
 char message_to_scroll_4[] = "MESSAGE TO SCROLL ON DISPLAY  ";        // 30+1
 char message_to_scroll_5[] = "MESAJUL DE AVERTIZARE CU NUMARUL 5  ";  // 36+1
+
+char memory1[] = "MEMORY 1 ";
+char memory2[] = "MEMORY 2 ";
+char memory3[] = "MEMORY 3 ";
+char memory4[] = "MEMORY 4 ";
+char memory5[] = "MEMORY 5 ";
 
 extern char mess_frequency[30];
 extern char mess_freq_static[30];
@@ -137,11 +142,32 @@ char mess_rds_rt5[9];
 char mess_rds_rt6[9];
 //char mess_rds_ps_rt[74];
 
-uint8_t volatile test_timer4;
+uint8_t volatile timer4 = 0;
 uint8_t volatile change_rds_display;
 bool volatile freq_vol_changed_manual;
 uint8_t rds_string_lenght;
 uint32_t ID = 0;
+bool m1_button_pressed = false;
+bool m2_button_pressed = false;
+bool m3_button_pressed = false;
+bool m4_button_pressed = false;
+bool m5_button_pressed = false;
+
+bool save_to_flash_m1 = false;
+bool save_to_flash_m2 = false;
+bool save_to_flash_m3 = false;
+bool save_to_flash_m4 = false;
+bool save_to_flash_m5 = false;
+
+bool read_from_flash_m1 = false;
+bool read_from_flash_m2 = false;
+bool read_from_flash_m3 = false;
+bool read_from_flash_m4 = false;
+bool read_from_flash_m5 = false;
+
+// flash variable
+uint8_t flash_RxData[20];
+uint8_t flash_TxData[20];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -195,6 +221,9 @@ int main(void)
   MX_TIM5_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+  W25Q_Reset();       // trebuie apelat aici, nu inainte de while
+  ID = W25Q_ReadID();
+
   HAL_TIM_Encoder_Start_IT(&htim2, TIM_CHANNEL_ALL);  // volum
   HAL_TIM_Encoder_Start_IT(&htim3, TIM_CHANNEL_ALL);  // frecventa
   /* USER CODE END 2 */
@@ -237,15 +266,15 @@ int main(void)
   HAL_Delay(1500);
   clear_display();
   freq_vol_changed_manual = true;
-  HAL_TIM_Base_Start_IT(&htim4); // Enable the timer
+  HAL_TIM_Base_Stop_IT(&htim4); // Enable the timer
   HAL_TIM_Base_Start_IT(&htim5); // Enable the timer
   freq = current_freq;
   populate_freq_array(freq);
  // rds_info_ready_to_display = false;
   change_rds_display = 1;
 
-  W25Q_Reset();
-  ID = W25Q_ReadID();
+  //W25Q_Reset();
+  //ID = W25Q_ReadID();
 
 
 //  W25qxx_Init();
@@ -648,7 +677,14 @@ int main(void)
 			}
 
 			HAL_GPIO_TogglePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin);
+//			  ID = W25Q_ReadID();
+//			  print_serial2_message("==============================-------||||---------|----|-");
+//			  print_serial2_message_number("W25Q_ReadID = ", ID);
+//			  print_serial2_message("==============================-------||||-------------");
 		}
+
+		read_write_memory_stations();
+
 
   }
   /* USER CODE END 3 */
@@ -1014,96 +1050,343 @@ void clear_buffers()
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	 uint16_t current_freq;
-	 if(GPIO_Pin == GPIO_PIN_9)                     // M1
+	 if(GPIO_Pin == GPIO_PIN_9)                     // PA9 M1
 	 {
 	    print_serial2_message("M1 pressed");
+	    m1_button_pressed = true;
 	    freq_vol_changed_manual = true;
 	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
 	    clear_buffers();
-	    freq = 8870;
-	    setFrequency(freq);
-//	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
-//	    print_serial2_message(message_frequency);
 	    clear_display();
-	    current_freq = getFrequency();
-	    TIM3->CNT = ((current_freq - 8750)/10)<<1;
-	    disp_freq(current_freq);
-	    freq = current_freq;
-	    populate_freq_array(freq);
 	 }
-	 if(GPIO_Pin == GPIO_PIN_10)                 // M2
+	 if(GPIO_Pin == GPIO_PIN_10)                 //PA10  M2
 	 {
 	    print_serial2_message("M2 pressed");
+	    m2_button_pressed = true;
 	    freq_vol_changed_manual = true;
 	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
 	    clear_buffers();
-	    freq = 9480;
-	    setFrequency(freq);
-//	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
-//	    print_serial2_message(message_frequency);
 	    clear_display();
-	    current_freq = getFrequency();
-	    TIM3->CNT = ((current_freq - 8750)/10)<<1;
-	    disp_freq(current_freq);
-	    freq = current_freq;
-	    populate_freq_array(freq);
 	 }
-
-	 if(GPIO_Pin == GPIO_PIN_11)                // M3
+	 if(GPIO_Pin == GPIO_PIN_11)                // PA11 M3
 	 {
 	    print_serial2_message("M3 pressed");
+	    m3_button_pressed = true;
 	    freq_vol_changed_manual = true;
 	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
 	    clear_buffers();
-	    freq = 9800;
-	    setFrequency(freq);
-//	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
-//	    print_serial2_message(message_frequency);
 	    clear_display();
-	    current_freq = getFrequency();
-	    TIM3->CNT = ((current_freq - 8750)/10)<<1;
-	    disp_freq(current_freq);
-	    freq = current_freq;
-	    populate_freq_array(freq);
 	 }
-	 if(GPIO_Pin == GPIO_PIN_12)               // M4
+	 if(GPIO_Pin == GPIO_PIN_12)               //PA12 M4
 	 {
 	    print_serial2_message("M4 pressed");
+	    m4_button_pressed = true;
 	    freq_vol_changed_manual = true;
 	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
 	    clear_buffers();
-	    freq = 10290;
-	    setFrequency(freq);
-//	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
-//	    print_serial2_message(message_frequency);
 	    clear_display();
-	    current_freq = getFrequency();
-	    TIM3->CNT = ((current_freq - 8750)/10)<<1;
-	    disp_freq(current_freq);
-	    freq = current_freq;
-	    populate_freq_array(freq);
 	 }
-	 if(GPIO_Pin == GPIO_PIN_15)                 // M5
+	 if(GPIO_Pin == GPIO_PIN_15)                 //PA15 M5
 	 {
 	    print_serial2_message("M5 pressed");
+	    m5_button_pressed = true;
 	    freq_vol_changed_manual = true;
 	    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
 	    clear_buffers();
-	    freq = 10760;
-	    setFrequency(freq);
-//	    sprintf(message_frequency, "Frecv = %li MHz \r", freq);
-//	    print_serial2_message(message_frequency);
 	    clear_display();
-	    current_freq = getFrequency();
-	    TIM3->CNT = ((current_freq - 8750)/10)<<1;
-	    disp_freq(current_freq);
-	    freq = current_freq;
-	    populate_freq_array(freq);
 	 }
 }
 
+void read_write_memory_stations()
+{
+	////////////////////////  M1 start ////////////////////////////////////////////////////////
+			if(m1_button_pressed == true)  //
+			 {
+				 static uint32_t current_count = 0;
+				 if(HAL_GPIO_ReadPin (GPIOA, GPIO_PIN_9) == 0)  // is PA9 still pressed?
+				 {
 
+	     	    	 current_count++;
+	                 if (current_count > 1000000)  //
+	                 {
+	                     current_count = 0;
+	                     save_to_flash_m1 = true;
+	        			 m1_button_pressed = false;
+	        			 read_from_flash_m1 = false;
+	                 }
+				 }
+				 else
+				 {
+					 read_from_flash_m1 = true;
+					 current_count = 0;
+				 }
+			 }
+			 if(read_from_flash_m1 == true)
+			 {
+				 m1_button_pressed = false;
+				 uint8_t curr_freq_low = W25Q_Read_Byte(1);
+				 uint8_t curr_freq_high = W25Q_Read_Byte(2);
+				 uint16_t curr_freq = curr_freq_low | (curr_freq_high << 8);
+				 setFrequency(curr_freq);
+				 clear_display();
+				 curr_freq = getFrequency();
+				 TIM3->CNT = ((curr_freq - 8750)/10)<<1;
+				 disp_freq(curr_freq);
+				 freq = curr_freq;
+				 populate_freq_array(freq);
+				 read_from_flash_m1 = false;
+			 }
+			 if(save_to_flash_m1 == true)
+			 {
+				 uint16_t current_freq = getFrequency();
+				 uint8_t current_freq_low = current_freq & 0xff;
+				 uint8_t current_freq_high = (current_freq >> 8);
+				 __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer
+				 W25Q_Erase_Sector(0);
+				 W25Q_Write_Byte(1, current_freq_low);
+				 W25Q_Write_Byte(2, current_freq_high);
+				 save_to_flash_m1 = false;
+				 display_static_message(memory1);
+				 uint32_t a;
+				 for (uint32_t i = 0; i < 14900000; i++)
+				 {
+				    a = i;
+				    a++;
+				 }
+				 read_from_flash_m1 = true;
+			 }
+	/////////////////////////  M1 end ////////////////////////////////////////////////////////
+
+	/////////////////////////  M2 start ////////////////////////////////////////////////////////
+			 if(m2_button_pressed == true)  //
+			 {
+				static uint32_t current_count = 0;
+			 	if(HAL_GPIO_ReadPin (GPIOA, GPIO_PIN_10) == 0)  // is PA10 still pressed?
+			 	{
+
+			      	 current_count++;
+			         if (current_count > 1000000)  //
+			         {
+			            current_count = 0;
+			            save_to_flash_m2 = true;
+			            m2_button_pressed = false;
+			         	read_from_flash_m2 = false;
+			         }
+			 	}
+			 	else
+			 	{
+			 		read_from_flash_m2 = true;
+			 		current_count = 0;
+			 	}
+			 }
+			 if(read_from_flash_m2 == true)
+			 {
+			 	m2_button_pressed = false;
+			 	uint8_t curr_freq_low = W25Q_Read_Byte(4097);
+			 	uint8_t curr_freq_high = W25Q_Read_Byte(4098);
+			 	uint16_t curr_freq = curr_freq_low | (curr_freq_high << 8);
+			 	setFrequency(curr_freq);
+			 	clear_display();
+			 	curr_freq = getFrequency();
+			 	TIM3->CNT = ((curr_freq - 8750)/10)<<1;
+			 	disp_freq(curr_freq);
+			 	freq = curr_freq;
+			 	populate_freq_array(freq);
+			 	read_from_flash_m2 = false;
+			 }
+			 if(save_to_flash_m2 == true)
+			 {
+			 	uint16_t current_freq = getFrequency();
+			 	uint8_t current_freq_low = current_freq & 0xff;
+			 	uint8_t current_freq_high = (current_freq >> 8);
+			    __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer
+			 	W25Q_Erase_Sector(1);
+			 	W25Q_Write_Byte(4097, current_freq_low);
+			 	W25Q_Write_Byte(4098, current_freq_high);
+			 	save_to_flash_m2 = false;
+			 	display_static_message(memory2);
+			 	uint32_t a;
+			 	for (uint32_t i = 0; i < 14900000; i++)
+			 	{
+			 		a = i;
+			 		a++;
+			    }
+			 	read_from_flash_m2 = true;
+			 }
+	/////////////////////////  M2 end ////////////////////////////////////////////////////////
+
+	/////////////////////////  M3 start ////////////////////////////////////////////////////////
+			 if(m3_button_pressed == true)  //
+			 {
+				static uint32_t current_count = 0;
+			 	if(HAL_GPIO_ReadPin (GPIOA, GPIO_PIN_11) == 0)  // is PA11 still pressed?
+			 	{
+			 		current_count++;
+			 		 if (current_count > 1000000)
+			 		 {
+			 		    current_count = 0;
+			 		    save_to_flash_m3 = true;
+			 		    m3_button_pressed = false;
+			 		 	read_from_flash_m3 = false;
+			 		 }
+			 	}
+			 	else
+			 	{
+			 		 read_from_flash_m3 = true;
+			 		 current_count = 0;
+			 	}
+			 }
+			 if(read_from_flash_m3 == true)
+			 {
+			 	m3_button_pressed = false;
+			 	uint8_t curr_freq_low = W25Q_Read_Byte(8193);
+			 	uint8_t curr_freq_high = W25Q_Read_Byte(8194);
+			 	uint16_t curr_freq = curr_freq_low | (curr_freq_high << 8);
+			 	setFrequency(curr_freq);
+			 	clear_display();
+			 	curr_freq = getFrequency();
+			 	TIM3->CNT = ((curr_freq - 8750)/10)<<1;
+			 	disp_freq(curr_freq);
+			 	freq = curr_freq;
+			 	populate_freq_array(freq);
+			 	read_from_flash_m3 = false;
+			 }
+			if(save_to_flash_m3 == true)
+			{
+			 	uint16_t current_freq = getFrequency();
+			 	uint8_t current_freq_low = current_freq & 0xff;
+			 	uint8_t current_freq_high = (current_freq >> 8);
+			 	__HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer
+			 	W25Q_Erase_Sector(2);
+			 	W25Q_Write_Byte(8193, current_freq_low);
+			 	W25Q_Write_Byte(8194, current_freq_high);
+			 	save_to_flash_m3 = false;
+			 	display_static_message(memory3);
+			 	uint32_t a;
+			 	for (uint32_t i = 0; i < 14900000; i++)
+			 	{
+			 		a = i;
+			 		a++;
+			 	}
+			 	read_from_flash_m3 = true;
+			}
+	/////////////////////////  M3 end ////////////////////////////////////////////////////////
+
+	/////////////////////////  M4 start ////////////////////////////////////////////////////////
+			if(m4_button_pressed == true)  //
+			{
+				static uint32_t current_count = 0;
+				if(HAL_GPIO_ReadPin (GPIOA, GPIO_PIN_12) == 0)  // is PA12 still pressed?
+				{
+					 current_count++;
+					 if (current_count > 1000000)  //
+					 {
+						 current_count = 0;
+						 save_to_flash_m4 = true;
+						 m4_button_pressed = false;
+						 read_from_flash_m4 = false;
+					 }
+				}
+				else
+					 {
+					 	read_from_flash_m4 = true;
+					    current_count = 0;
+					 }
+			}
+			if(read_from_flash_m4 == true)
+			{
+				m4_button_pressed = false;
+				uint8_t curr_freq_low = W25Q_Read_Byte(12289);
+				uint8_t curr_freq_high = W25Q_Read_Byte(12290);
+				uint16_t curr_freq = curr_freq_low | (curr_freq_high << 8);
+				setFrequency(curr_freq);
+				clear_display();
+				curr_freq = getFrequency();
+				TIM3->CNT = ((curr_freq - 8750)/10)<<1;
+				disp_freq(curr_freq);
+				freq = curr_freq;
+				populate_freq_array(freq);
+				read_from_flash_m4 = false;
+			}
+			if(save_to_flash_m4 == true)
+			{
+				uint16_t current_freq = getFrequency();
+				uint8_t current_freq_low = current_freq & 0xff;
+				uint8_t current_freq_high = (current_freq >> 8);
+				__HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer
+				W25Q_Erase_Sector(3);
+				W25Q_Write_Byte(12289, current_freq_low);
+				W25Q_Write_Byte(12290, current_freq_high);
+				save_to_flash_m4 = false;
+				display_static_message(memory4);
+				uint32_t a;
+				for (uint32_t i = 0; i < 14900000; i++)
+				{
+					 a = i;
+					 a++;
+				}
+				read_from_flash_m4 = true;
+			}
+	/////////////////////////  M4 end ////////////////////////////////////////////////////////
+
+	/////////////////////////  M5 start ////////////////////////////////////////////////////////
+			if(m5_button_pressed == true)  //
+			{
+				static uint32_t current_count = 0;
+				if(HAL_GPIO_ReadPin (GPIOA, GPIO_PIN_15) == 0)  // is PA15 still pressed?
+				{
+					 current_count++;
+					 if (current_count > 1000000)
+					 {
+					 	current_count = 0;
+			 		    save_to_flash_m5 = true;
+					 	m5_button_pressed = false;
+					 	read_from_flash_m5 = false;
+					 }
+				}
+				else
+				{
+					read_from_flash_m5 = true;
+				 	current_count = 0;
+				}
+			}
+			if(read_from_flash_m5 == true)
+			{
+				m5_button_pressed = false;
+				uint8_t curr_freq_low = W25Q_Read_Byte(16385);
+				uint8_t curr_freq_high = W25Q_Read_Byte(16386);
+				uint16_t curr_freq = curr_freq_low | (curr_freq_high << 8);
+				setFrequency(curr_freq);
+				clear_display();
+				curr_freq = getFrequency();
+				TIM3->CNT = ((curr_freq - 8750)/10)<<1;
+				disp_freq(curr_freq);
+				freq = curr_freq;
+				populate_freq_array(freq);
+				read_from_flash_m5 = false;
+			}
+			if(save_to_flash_m5 == true)
+			{
+				uint16_t current_freq = getFrequency();
+				uint8_t current_freq_low = current_freq & 0xff;
+				uint8_t current_freq_high = (current_freq >> 8);
+				__HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer
+				W25Q_Erase_Sector(4);
+				W25Q_Write_Byte(16385, current_freq_low);
+				W25Q_Write_Byte(16386, current_freq_high);
+				save_to_flash_m5 = false;
+				display_static_message(memory5);
+				uint32_t a;
+				for (uint32_t i = 0; i < 14900000; i++)
+				{
+					 a = i;
+					 a++;
+				}
+				read_from_flash_m5 = true;
+			}
+	/////////////////////////  M5 end ////////////////////////////////////////////////////////
+
+}
 /* USER CODE END 4 */
 
 /**
@@ -1124,7 +1407,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
   /* USER CODE BEGIN Callback 1 */
   if (htim->Instance == TIM4) {        // 2 sec
-	  test_timer4++;
+	  timer4++;
   }
 
   if (htim->Instance == TIM5) {        // 3 sec
