@@ -1408,7 +1408,7 @@ void Radio_SetFreq(uint8_t mode,uint8_t Band,uint16_t Freq)
      check station if aviable
 ---------------------------------------------------------------------*/
 #define RADIO_CHECK_INTERVAL	5
-static uint32_t Radio_Check_Timer;
+//static uint32_t Radio_Check_Timer;
 void Radio_CheckStation(void)
 {
 	unsigned char threshold;

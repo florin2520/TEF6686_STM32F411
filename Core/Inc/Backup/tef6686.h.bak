@@ -562,8 +562,8 @@ void setVolume(uint16_t volume);
 void setMute();
 void setUnMute();
 
-static uint16_t Tuner_Patch_Load(const unsigned char * pLutBytes, uint16_t size);
-static uint16_t Tuner_Table_Write(const unsigned char * tab);
+//static uint16_t Tuner_Patch_Load(const unsigned char * pLutBytes, uint16_t size);
+//static uint16_t Tuner_Table_Write(const unsigned char * tab);
 uint16_t Tuner_Init(void);
 void Tuner_WaitMs (uint16_t ms);
 static int Radio_Get_Data(uint8_t fm, uint8_t *usn, uint8_t *wam, uint16_t *offset);

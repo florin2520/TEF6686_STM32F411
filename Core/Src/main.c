@@ -128,6 +128,7 @@ char memory2[] = "MEMORY 2 ";
 char memory3[] = "MEMORY 3 ";
 char memory4[] = "MEMORY 4 ";
 char memory5[] = "MEMORY 5 ";
+char fm_radio[] = "FM RADIO ";
 
 extern char mess_frequency[30];
 extern char mess_freq_static[30];
@@ -142,7 +143,7 @@ char mess_rds_rt5[9];
 char mess_rds_rt6[9];
 //char mess_rds_ps_rt[74];
 
-uint8_t volatile timer4 = 0;
+
 uint8_t volatile change_rds_display;
 bool volatile freq_vol_changed_manual;
 uint8_t rds_string_lenght;
@@ -165,6 +166,9 @@ bool read_from_flash_m3 = false;
 bool read_from_flash_m4 = false;
 bool read_from_flash_m5 = false;
 
+bool volum_changed = false;
+bool save_to_flash_volume = false;
+uint8_t volatile timer4 = 0;
 // flash variable
 uint8_t flash_RxData[20];
 uint8_t flash_TxData[20];
@@ -232,16 +236,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
   HAL_GPIO_WritePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin, GPIO_PIN_RESET);
-
   print_serial2_message("Start radio...");
-  //start radio
   uint8_t start_rd_ok = init_radio();
   powerOn();
-
   Radio_SetBand(FM1_BAND); // ??
   current_band = Radio_GetCurrentBand(); // 1 => 65-108
-  setFrequency(8870);
-  setVolume(-10);// -60 --> 24
+  load_default_station_and_volume();
   sprintf(message_frequency, "START RADIO CODE = %i \r", start_rd_ok); // 1 = OK, 2 = Doesn't exist, 0 = busy
   print_serial2_message(message_frequency);
 
@@ -253,35 +253,17 @@ int main(void)
   HAL_GPIO_WritePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin, GPIO_PIN_SET);
 
   begin_disp(DISPLAY_ADDRESS);  // pass in the address
-    //clear_entire_display();
-  writeDigitAscii(0, 'F', false);
-  writeDigitAscii(1, 'M', false);
-  writeDigitAscii(2, ' ', false);
-  writeDigitAscii(3, 'R', false);
-  writeDigitAscii(4, 'A', false);
-  writeDigitAscii(5, 'D', false);
-  writeDigitAscii(6, 'I', false);
-  writeDigitAscii(7, 'O', false);
-  writeDisplay(DISPLAY_ADDRESS);
+  display_static_message(fm_radio);
   HAL_Delay(1500);
   clear_display();
+
   freq_vol_changed_manual = true;
-  HAL_TIM_Base_Stop_IT(&htim4); // Enable the timer
+  HAL_TIM_Base_Start_IT(&htim4); //
   HAL_TIM_Base_Start_IT(&htim5); // Enable the timer
   freq = current_freq;
   populate_freq_array(freq);
- // rds_info_ready_to_display = false;
   change_rds_display = 1;
 
-  //W25Q_Reset();
-  //ID = W25Q_ReadID();
-
-
-//  W25qxx_Init();
-//  ID = W25qxx_ReadID();
-  print_serial2_message("==============================-------||||---------|----|-");
-  print_serial2_message_number("W25Q_ReadID = ", ID);
-  print_serial2_message("==============================-------||||-------------");
   while (1)
   {
     /* USER CODE END WHILE */
@@ -351,11 +333,13 @@ int main(void)
 		}
 		if(encoder_reading_v != old_encoder_reading_v)
 		{
-		 // map(value, fromLow, fromHigh, toLow, toHigh)
 		   freq_vol_changed_manual = true;
-		  // HAL_TIM_Base_Stop_IT(&htim5);
 		   __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
 
+		   volum_changed = true;
+		   __HAL_TIM_SET_COUNTER(&htim4, 64000); // reset timer (countdown timer)
+		   timer4 = 0;
+		   // map(value, fromLow, fromHigh, toLow, toHigh)
 		   int vol = map(encoder_reading_v, 0, 30, -40, 15);
 		   setVolume(vol);
 		   sprintf(message_volume, "Vol = %i  \r", vol);
@@ -683,7 +667,7 @@ int main(void)
 //			  print_serial2_message("==============================-------||||-------------");
 		}
 
-		read_write_memory_stations();
+		read_write_memory_stations_vol();
 
 
   }
@@ -1050,7 +1034,7 @@ void clear_buffers()
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	 if(GPIO_Pin == GPIO_PIN_9)                     // PA9 M1
+	 if(GPIO_Pin == GPIO_PIN_9)                  // PA9 M1
 	 {
 	    print_serial2_message("M1 pressed");
 	    m1_button_pressed = true;
@@ -1059,7 +1043,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	    clear_buffers();
 	    clear_display();
 	 }
-	 if(GPIO_Pin == GPIO_PIN_10)                 //PA10  M2
+	 if(GPIO_Pin == GPIO_PIN_10)                 // PA10 M2
 	 {
 	    print_serial2_message("M2 pressed");
 	    m2_button_pressed = true;
@@ -1068,7 +1052,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	    clear_buffers();
 	    clear_display();
 	 }
-	 if(GPIO_Pin == GPIO_PIN_11)                // PA11 M3
+	 if(GPIO_Pin == GPIO_PIN_11)                 // PA11 M3
 	 {
 	    print_serial2_message("M3 pressed");
 	    m3_button_pressed = true;
@@ -1077,7 +1061,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	    clear_buffers();
 	    clear_display();
 	 }
-	 if(GPIO_Pin == GPIO_PIN_12)               //PA12 M4
+	 if(GPIO_Pin == GPIO_PIN_12)                 // PA12 M4
 	 {
 	    print_serial2_message("M4 pressed");
 	    m4_button_pressed = true;
@@ -1086,7 +1070,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	    clear_buffers();
 	    clear_display();
 	 }
-	 if(GPIO_Pin == GPIO_PIN_15)                 //PA15 M5
+	 if(GPIO_Pin == GPIO_PIN_15)                 // PA15 M5
 	 {
 	    print_serial2_message("M5 pressed");
 	    m5_button_pressed = true;
@@ -1097,10 +1081,17 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	 }
 }
 
-void read_write_memory_stations()
+void read_write_memory_stations_vol()
 {
+	/////////////////////////// vol start /////////////////////////////////////////////////////
+	save_volume(encoder_reading_v);
+
+
+	/////////////////////////// vol end //////////////////////////////////////////////////////
+
+
 	////////////////////////  M1 start ////////////////////////////////////////////////////////
-			if(m1_button_pressed == true)  //
+			 if(m1_button_pressed == true)  //
 			 {
 				 static uint32_t current_count = 0;
 				 if(HAL_GPIO_ReadPin (GPIOA, GPIO_PIN_9) == 0)  // is PA9 still pressed?
@@ -1251,7 +1242,7 @@ void read_write_memory_stations()
 			 	populate_freq_array(freq);
 			 	read_from_flash_m3 = false;
 			 }
-			if(save_to_flash_m3 == true)
+			 if(save_to_flash_m3 == true)
 			{
 			 	uint16_t current_freq = getFrequency();
 			 	uint8_t current_freq_low = current_freq & 0xff;
@@ -1273,7 +1264,7 @@ void read_write_memory_stations()
 	/////////////////////////  M3 end ////////////////////////////////////////////////////////
 
 	/////////////////////////  M4 start ////////////////////////////////////////////////////////
-			if(m4_button_pressed == true)  //
+			 if(m4_button_pressed == true)  //
 			{
 				static uint32_t current_count = 0;
 				if(HAL_GPIO_ReadPin (GPIOA, GPIO_PIN_12) == 0)  // is PA12 still pressed?
@@ -1293,7 +1284,7 @@ void read_write_memory_stations()
 					    current_count = 0;
 					 }
 			}
-			if(read_from_flash_m4 == true)
+			 if(read_from_flash_m4 == true)
 			{
 				m4_button_pressed = false;
 				uint8_t curr_freq_low = W25Q_Read_Byte(12289);
@@ -1308,7 +1299,7 @@ void read_write_memory_stations()
 				populate_freq_array(freq);
 				read_from_flash_m4 = false;
 			}
-			if(save_to_flash_m4 == true)
+			 if(save_to_flash_m4 == true)
 			{
 				uint16_t current_freq = getFrequency();
 				uint8_t current_freq_low = current_freq & 0xff;
@@ -1330,7 +1321,7 @@ void read_write_memory_stations()
 	/////////////////////////  M4 end ////////////////////////////////////////////////////////
 
 	/////////////////////////  M5 start ////////////////////////////////////////////////////////
-			if(m5_button_pressed == true)  //
+			 if(m5_button_pressed == true)  //
 			{
 				static uint32_t current_count = 0;
 				if(HAL_GPIO_ReadPin (GPIOA, GPIO_PIN_15) == 0)  // is PA15 still pressed?
@@ -1350,7 +1341,7 @@ void read_write_memory_stations()
 				 	current_count = 0;
 				}
 			}
-			if(read_from_flash_m5 == true)
+			 if(read_from_flash_m5 == true)
 			{
 				m5_button_pressed = false;
 				uint8_t curr_freq_low = W25Q_Read_Byte(16385);
@@ -1365,7 +1356,7 @@ void read_write_memory_stations()
 				populate_freq_array(freq);
 				read_from_flash_m5 = false;
 			}
-			if(save_to_flash_m5 == true)
+			 if(save_to_flash_m5 == true)
 			{
 				uint16_t current_freq = getFrequency();
 				uint8_t current_freq_low = current_freq & 0xff;
@@ -1387,6 +1378,41 @@ void read_write_memory_stations()
 	/////////////////////////  M5 end ////////////////////////////////////////////////////////
 
 }
+
+void save_volume(uint8_t vol)
+{
+	if(volum_changed == true)
+	{
+		if(timer4 >= 1)
+		{
+			save_to_flash_volume = true;
+			timer4 = 0;
+		}
+	}
+	if(save_to_flash_volume == true)
+	{
+		save_to_flash_volume = false;
+		volum_changed = false;
+		W25Q_Erase_Sector(5);
+	    W25Q_Write_Byte(20481, vol);
+	}
+}
+void load_default_station_and_volume()
+{
+	  uint8_t curr_freq_low = W25Q_Read_Byte(1);
+	  uint8_t curr_freq_high = W25Q_Read_Byte(2);
+	  uint16_t curr_freq = curr_freq_low | (curr_freq_high << 8);
+	  setFrequency(curr_freq);
+	  uint16_t current_freq = getFrequency();
+	  TIM3->CNT = ((current_freq - 8750)/10)<<1;
+
+	  uint8_t curr_vol = W25Q_Read_Byte(20481);
+	  if(curr_vol == 255)
+		  curr_vol = 10;
+	  int vol = map(curr_vol, 0, 30, -40, 15);   // map(value, fromLow, fromHigh, toLow, toHigh)
+	  setVolume(vol);
+	  TIM2->CNT = curr_vol<<1;
+}
 /* USER CODE END 4 */
 
 /**
@@ -1406,8 +1432,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  if (htim->Instance == TIM4) {        // 2 sec
+  if (htim->Instance == TIM4) {        // ~2.7 sec
 	  timer4++;
+
   }
 
   if (htim->Instance == TIM5) {        // 3 sec

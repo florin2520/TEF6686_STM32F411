@@ -46,7 +46,9 @@ extern "C" {
 void showFmSeek();
 uint8_t prepare_rds_for_display(char *rds_message);
 void clear_buffers();
-void read_write_memory_stations();
+void read_write_memory_stations_vol();
+void save_volume(uint8_t vol);
+void load_default_station_and_volume();
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
