@@ -38,6 +38,6 @@ void left_rotate(char arr[], int d, int n);
 void populate_freq_array(uint32_t freq);
 void populate_vol_array(uint16_t vol);
 uint8_t find_3_space_in_string(char *message);
-
+void disp_freq_animate(uint32_t freq);
 
 #endif /* INC_DISPLAY_FUNCTIONS_H_ */

@@ -49,6 +49,10 @@ void clear_buffers();
 void read_write_memory_stations_vol();
 void save_volume(uint8_t vol);
 void load_default_station_and_volume();
+void read_volume_encoder();
+void read_frequency_encoder();
+void show_rds_informations();
+void read_seek_up_down_gpio();
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
