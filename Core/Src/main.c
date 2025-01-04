@@ -6,7 +6,7 @@
 /* de afisat mod stereo cu un punct pe display
  * de rezolvat cautarea automata intr-o singura banda
  * animatii display
- * memorii posturi
+ * memorii posturi                                       ok
  * de ce dureaza bucla while principala atat de mult ??
  * eroare afisare punct 90.0
  *
@@ -50,6 +50,7 @@
 #include "I2C_reg.h"
 #include "display_functions.h"
 #include "W25Qxx.h"
+#include "RevEng_PAJ7620.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -125,6 +126,7 @@ char memory5[] = "MEMORY 5 ";
 char fm_radio[] = "FM RADIO ";
 char search_up[] = "SEARCH>> ";
 char search_down[] = "<<SEARCH ";
+char hello[]= " HELLO ";
 
 extern char mess_frequency[30];
 extern char mess_freq_static[30];
@@ -169,6 +171,8 @@ uint8_t volatile timer4 = 0;
 uint8_t flash_RxData[20];
 uint8_t flash_TxData[20];
 
+bool PAJ_event = false;
+uint8_t volum;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -190,7 +194,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  //NVIC_SystemReset();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -261,6 +265,9 @@ int main(void)
   populate_freq_array(freq);
   change_rds_display = 1;
 
+  beginPAJ7620();
+  enablePAJsensor();
+
   while (1)
   {
     /* USER CODE END WHILE */
@@ -268,12 +275,14 @@ int main(void)
     /* USER CODE BEGIN 3 */
       contor++;
       showFmSeek();
-     //stereo_status = getStereoStatus(); // very very slow function!!!
+                   //stereo_status = getStereoStatus(); // very very slow function!!!
       read_seek_up_down_gpio();
       read_volume_encoder();
       read_frequency_encoder();
       show_rds_informations();
 	  read_write_memory_stations_vol();
+	  read_PAJ_gesture();
+
   }
   /* USER CODE END 3 */
 }
@@ -682,6 +691,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	    clear_buffers();
 	    clear_display();
 	 }
+	 if(GPIO_Pin == PAJ_interrupt_Pin)
+	 {
+		 PAJ_event = true;
+	 }
 }
 void read_write_memory_stations_vol()
 {
@@ -1013,6 +1026,7 @@ void load_default_station_and_volume()
 	  int vol = map(curr_vol, 0, 30, -40, 15);   // map(value, fromLow, fromHigh, toLow, toHigh)
 	  setVolume(vol);
 	  TIM2->CNT = curr_vol<<1;
+	  volum = curr_vol;
 }
 void read_volume_encoder()
 {
@@ -1042,6 +1056,7 @@ void read_volume_encoder()
 	   print_serial2_message(message_volume);
 	   clear_display();
 	   disp_vol(encoder_reading_v);
+	   volum = encoder_reading_v;
 	}
 	old_encoder_reading_v = encoder_reading_v;
 }
@@ -1061,6 +1076,7 @@ void read_frequency_encoder()
 	}
 	if(encoder_reading_f != old_encoder_reading_f)
 	{
+		//disablePAJsensor();
 		freq_vol_changed_manual = true;
 		__HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
 		clear_buffers();
@@ -1148,13 +1164,7 @@ void show_rds_informations()
 		    	        display_static_message(mess_rds_rt2);
 		        	    if ((rds_string_lenght > 8) && (rds_string_lenght <= 16)) // 9-16
 		        	    {
-		        	    	static uint8_t current_count = 0;
-		        	    	current_count++;
-                            if (current_count > 10)  // time to display last screen
-                            {
-                                current_count = 0;
-                                change_rds_display = 1;
-                            }
+
 		        	    }
 		        	    else if (rds_string_lenght > 16)
 		        	    {
@@ -1383,6 +1393,148 @@ void read_seek_up_down_gpio()
 	        isFmSeekUp = false;
 	        clear_buffers();
     }
+}
+
+void read_PAJ_gesture()
+{
+	 if (PAJ_event)
+	  {
+		  Gesture gesture;                  // Gesture is an enum type from RevEng_PAJ7620.h
+		  gesture = readGesture();          // Read back current gesture (if any) of type Gesture
+		  switch (gesture)
+		  {
+		    case GES_FORWARD:
+		      {
+		    	  char str1[] = "GES_FORWARD";
+		    	  print_serial2_message(str1);
+
+		        break;
+		      }
+		    case GES_BACKWARD:
+		      {
+		    	  char str1[] = "GES_BACKWARD";
+		    	  print_serial2_message(str1);
+
+		        break;
+		      }
+		    case GES_LEFT:
+		      {
+		    	  //char str1[] = "GES_LEFT";
+		    	  char str1[] = "GES_RIGHT";
+		    	  print_serial2_message(str1);
+		    	  clear_display();
+		    	  display_static_message(search_up);   // seekup
+		    	  isFmSeekMode = true;
+		    	  isFmSeekUp = true;
+		    	  clear_buffers();
+		          break;
+		      }
+		    case GES_RIGHT:
+		      {
+		    	  //char str1[] = "GES_RIGHT";
+		    	  char str1[] = "GES_LEFT";
+		    	  print_serial2_message(str1);
+				  clear_display();
+				  display_static_message(search_down);   //seekdown
+			      isFmSeekMode = true;
+			      isFmSeekUp = false;
+			      clear_buffers();
+		        break;
+		      }
+		    case GES_UP:                        // vol-
+		      {
+		    	  //char str1[] = "GES_UP";
+		    	  char str1[] = "GES_DOWN";
+		    	  print_serial2_message(str1);
+		    	  freq_vol_changed_manual = true;
+		    	  __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
+                  volum = volum - 1;
+                  if(volum <= 0)
+                    volum = 0;
+		    	  int vol = map(volum, 0, 30, -40, 15);
+		    	  setVolume(vol);
+		    	  TIM2->CNT = volum<<1;
+		    	  clear_display();
+		    	  disp_vol(volum);
+		         break;
+		      }
+		    case GES_DOWN:                      // vol+
+		      {
+		    	  //char str1[] = "GES_DOWN";
+		    	  char str1[] = "GES_UP";
+		    	  print_serial2_message(str1);
+		    	  freq_vol_changed_manual = true;
+		    	  __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
+                  volum = volum + 1;
+                  if(volum >= 30)
+                    	volum = 30;
+		    	  int vol = map(volum, 0, 30, -40, 15);
+		    	  setVolume(vol);
+		    	  TIM2->CNT = volum<<1;
+		    	  clear_display();
+		    	  disp_vol(volum);
+		          break;
+		      }
+		    case GES_CLOCKWISE:
+		      {
+//		    	 char str1[] = "GES_CLOCKWISE";
+//		    	 print_serial2_message(str1);
+		 		 freq_vol_changed_manual = true;
+		 		 __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
+		 		 clear_buffers();
+		    	 uint16_t current_freq = getFrequency();
+		    	 current_freq  = current_freq + 10;
+		    	 setFrequency(current_freq);
+		    	 TIM3->CNT = ((current_freq - 8750)/10)<<1;
+		 	     clear_display();
+		 	     disp_freq(freq);
+		 	     freq = current_freq;
+		 	     populate_freq_array(freq);
+		    	 //HAL_Delay(1);
+		         break;
+		      }
+		    case GES_ANTICLOCKWISE:
+		      {
+//		    	 char str1[] = "GES_ANTICLOCKWISE";
+//		    	 print_serial2_message(str1);
+		 		 freq_vol_changed_manual = true;
+		 		 __HAL_TIM_SET_COUNTER(&htim5, 9999); // reset timer (countdown timer)
+		 		 clear_buffers();
+		    	 uint16_t current_freq = getFrequency();
+		    	 current_freq  = current_freq - 10;
+		    	 setFrequency(current_freq);
+		    	 TIM3->CNT = ((current_freq - 8750)/10)<<1;
+		 	     clear_display();
+		 	     disp_freq(freq);
+		 	     freq = current_freq;
+		 	     populate_freq_array(freq);
+		    	 //HAL_Delay(1);
+		         break;
+		      }
+		    case GES_WAVE:
+		      {
+		    	  char str1[] = "GES_WAVE";
+		    	  print_serial2_message(str1);
+		    	  freq_vol_changed_manual = true;
+		    	  clear_display();
+		    	  display_static_message(hello);   // radio display hello when you waving :)
+		        break;
+		      }
+		    case GES_NONE:
+		      {
+		        break;
+		      }
+		  }
+
+//		  if( gesture != GES_NONE )
+//		  {
+//			  char str1[16];
+//			  sprintf(str1, ", Code: %i \n\r", gesture);
+//			  print_serial2_message(str1);
+//		  }
+		  PAJ_event = false;
+		  //HAL_Delay(1);
+	  }
 }
 /* USER CODE END 4 */
 

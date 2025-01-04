@@ -53,6 +53,7 @@ void read_volume_encoder();
 void read_frequency_encoder();
 void show_rds_informations();
 void read_seek_up_down_gpio();
+void read_PAJ_gesture();
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
@@ -80,8 +81,9 @@ void Error_Handler(void);
 #define LIGHT_SENSOR_GPIO_Port GPIOB
 #define IR_SENSOR_Pin GPIO_PIN_1
 #define IR_SENSOR_GPIO_Port GPIOB
-#define PAJ7620_INT_Pin GPIO_PIN_2
-#define PAJ7620_INT_GPIO_Port GPIOB
+#define PAJ_interrupt_Pin GPIO_PIN_2
+#define PAJ_interrupt_GPIO_Port GPIOB
+#define PAJ_interrupt_EXTI_IRQn EXTI2_IRQn
 #define VFD_CS_Pin GPIO_PIN_12
 #define VFD_CS_GPIO_Port GPIOB
 #define HCMS_RS_Pin GPIO_PIN_13

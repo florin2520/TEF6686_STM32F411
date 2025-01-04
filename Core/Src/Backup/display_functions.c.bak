@@ -455,7 +455,6 @@ void populate_vol_array(uint16_t vol)
 	mess_volume[8] = v2 + 48;
 }
 
-
 uint8_t find_3_space_in_string(char *message)
 {
 
@@ -475,6 +474,89 @@ uint8_t find_3_space_in_string(char *message)
         i++;
     }
     return i + 2;
+}
+
+void disp_freq_animate(uint32_t freq)
+{
+	//static uint32_t current_count = 0;
+	extern uint32_t current_count;
+	current_count++;
+    if (current_count > 1000000)
+    {
+        current_count = 1000000;
+    }
+
+	if (freq >= 10000)
+	{
+		uint16_t freq_0 = freq / 10000; // prima cifra
+		uint16_t f_0 = freq % 10000;
+		uint16_t freq_1 = f_0 / 1000;   // a doua cifra
+		uint16_t f_1 =  f_0 % 1000;
+		uint16_t freq_2 = f_1 / 100;   // a treia cifra  (*cu punct jos)
+		uint16_t freq_3 = f_1 %  100;
+		uint16_t freq_4 = freq_3 / 10;   // a patra cifra
+
+	    if (current_count <= 1000)
+	    {
+	    	writeDigitAscii(1, freq_1 + 48, false);
+			writeDisplay(DISPLAY_ADDRESS);
+	    }
+	    if (current_count <= 70000)
+	    {
+	    	writeDigitAscii(2, freq_2 + 48, true);
+			writeDisplay(DISPLAY_ADDRESS);
+	    }
+	    if (current_count <= 120000)
+	    {
+			writeDigitAscii(3, freq_4 + 48, false);
+			writeDisplay(DISPLAY_ADDRESS);
+	    }
+	    if (current_count <= 200000)
+	    {
+	    	writeDigitAscii(4, ' ', false);
+			writeDisplay(DISPLAY_ADDRESS);
+	    }
+	    if (current_count <= 300000)
+	    {
+	    	writeDigitAscii(5, 'M', false);
+			writeDisplay(DISPLAY_ADDRESS);
+	    }
+	    if (current_count <= 400000)
+	    {
+			writeDigitAscii(6, 'H', false);
+			writeDisplay(DISPLAY_ADDRESS);
+	    }
+	    if (current_count <= 500000)
+	    {
+			writeDigitAscii(7, 'Z', false);
+			writeDisplay(DISPLAY_ADDRESS);
+	    }
+
+
+
+
+
+
+	}
+	else
+	{
+		uint16_t freq_0 = freq / 1000; // prima cifra
+		uint16_t f_0 = freq % 1000;
+		uint16_t freq_1 = f_0 / 100;   // a doua cifra
+		uint16_t f_1 =  f_0 % 100;
+		uint16_t freq_2 = f_1 / 10;   // a treia cifra  (*cu punct jos)
+		//uint16_t freq_3 = f_1 % 100;   // a patra cifra
+
+		writeDigitAscii(0, ' ', false);
+		writeDigitAscii(1, freq_0 + 48, false);
+		writeDigitAscii(2, freq_1 + 48, true);
+		writeDigitAscii(3, freq_2 + 48, false);
+		writeDigitAscii(4, ' ', false);
+		writeDigitAscii(5, 'M', false);
+		writeDigitAscii(6, 'H', false);
+		writeDigitAscii(7, 'Z', false);
+		writeDisplay(DISPLAY_ADDRESS);
+	}
 }
 //void disp_static(char *message) // TODO
 //{

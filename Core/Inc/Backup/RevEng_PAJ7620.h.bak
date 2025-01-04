@@ -1,0 +1,613 @@
+/**
+  \file RevEng_PAJ7620.h
+  \author Aaron S. Crandall
+
+  \version 1.5.0
+
+  \copyright
+  \parblock
+  - Copyright (c) 2015 seeed technology inc.
+  - Website    : www.seeed.cc
+  - Author     : Wuruibin & Xiangnan
+  - Modified Time: June 2015
+
+  Additional contributions:
+  - 2017 - Modified by MarcFinns to encapsulate in class without global variables  
+  - 2020 - PROGMEM code adapted from Jaycar-Electronics' work  
+  - 2020 - Modified by Aaron S. Crandall <crandall@gonzaga.edu>  
+  - 2020 - Modified by Sean Kallaher (GitHub: skallaher)  
+
+  Description: This demo can recognize 9 gestures and output the result,
+        including move up, move down, move left, move right,
+        move forward, move backward, circle-clockwise,
+        circle-anti (counter) clockwise, and wave.
+
+  License: The MIT License (MIT)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.
+  \endparblock
+
+  PAJ7620U2 Sensor data sheet for reference found here:
+    https://datasheetspdf.com/pdf-file/1309990/PixArt/PAJ7620U2/1
+
+  Driver sources, latest code, and authors available at:
+    https://github.com/acrandal/RevEng_PAJ7620
+*/
+
+#ifndef __PAJ7620_H__
+#define __PAJ7620_H__
+
+
+//#define FM_MODULE_WRITE_ADRESS 0x11<<1
+//#define FM_MODULE_READ_ADRESS ((0x11<<1) + 1)
+
+//#include "I2C_reg.h"
+#include <stdbool.h>
+
+
+/* Changed to JayCar-Electronics PROGMEM approach from <a href="https://github.com/Jaycar-Electronics">their fork</a>.
+ * This is used for the various initialization and mode register arrays.
+ * Saves about 5% of SRAM on an Arduino Uno - Around 100 bytes for the init array.
+ */
+#if defined(__AVR__) || defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+#define PROGMEM_COMPATIBLE
+#endif
+
+
+/** 
+  Gesture result definitions.
+  Used as return value from readGesture call
+ */
+//enum Gesture
+//{
+//  GES_NONE = 0,      /**< No gesture */
+//  GES_UP,            /**< Upwards gesture */
+//  GES_DOWN,	         /**< Downward gesture */
+//  GES_LEFT,          /**< Leftward gesture */
+//  GES_RIGHT,         /**< Rightward gesture */
+//  GES_FORWARD,       /**< Forward gesture */
+//  GES_BACKWARD,      /**< Backward gesture */
+//  GES_CLOCKWISE,     /**< Clockwise circular gesture */
+//  GES_ANTICLOCKWISE, /**< Anticlockwise circular gesture */
+//  GES_WAVE           /**< Wave gesture */
+//};
+typedef enum
+{
+  GES_NONE = 0,      /**< No gesture */
+  GES_UP,            /**< Upwards gesture */
+  GES_DOWN,	         /**< Downward gesture */
+  GES_LEFT,          /**< Leftward gesture */
+  GES_RIGHT,         /**< Rightward gesture */
+  GES_FORWARD,       /**< Forward gesture */
+  GES_BACKWARD,      /**< Backward gesture */
+  GES_CLOCKWISE,     /**< Clockwise circular gesture */
+  GES_ANTICLOCKWISE, /**< Anticlockwise circular gesture */
+  GES_WAVE           /**< Wave gesture */
+} Gesture;
+
+
+/**
+  Used for selecting PAJ7620 memory bank to read/write from
+  \author Wuruibin / seeed technology inc.
+ */
+typedef enum
+{
+  BANK0 = 0,            /**< Memory bank 0 */
+  BANK1,                /**< Memory bank 1 */
+} Bank_e;
+
+
+/**
+ * Used for reading the corners in corners mode and PIN mode
+ * \note Width of "middle" set by CORNERS_BUFFER_WIDTH_PCT value
+ */
+typedef enum
+{
+  CORNER_NONE = 0,      /**< No object in view */
+  CORNER_NE = 1,        /**< Object in NE quadrant */
+  CORNER_NW = 2,        /**< Object in NW quadrant */
+  CORNER_SW = 3,        /**< Object in SW quadrant */
+  CORNER_SE = 4,        /**< Object in SE quadrant */
+  CORNER_MIDDLE = 5,    /**< Object in between quadrants */
+  QUADRANT_NONE = 0,    /**< No object in view */
+  QUADRANT_I = 1,       /**< Object in cartesian quadrant I (NE) */
+  QUADRANT_II = 2,      /**< Object in cartesian quadrant II (NW) */
+  QUADRANT_III = 3,     /**< Object in cartesian quadrant III (SW) */
+  QUADRANT_IV = 4,      /**< Object in cartesian quadrant IV (SE) */
+} Corner;
+
+
+/** @name Device Constants */
+/**@{*/
+
+/** DEVICE'S I2C ID - defined by manufacturer */
+//#define PAJ7620_I2C_BUS_ADDR              0x73
+#define PAJ7620_I2C_BUS_ADDR              0x73<<1
+#define PAJ7620_I2C_READ_BUS_ADDR         231
+/** Base address for accessing registers */
+#define PAJ7620_ADDR_BASE                 0x00
+
+/** Register bank select address */
+#define PAJ7620_REGISTER_BANK_SEL         (PAJ7620_ADDR_BASE + 0xEF)  // W
+/**@}*/
+
+/** @name ID values 
+*   Device's hard coded ID values
+*/
+/**@{*/
+#define PAJ7620_PART_ID_LSB               0x20
+#define PAJ7620_PART_ID_MSB               0x76
+/**@}*/
+
+/** @name REGISTER BANK 0
+ *  Addresses used within register bank 0
+ */
+/**@{*/
+/** \note Readonly */
+#define PAJ7620_ADDR_PART_ID_0            (PAJ7620_ADDR_BASE + 0x00)  // R
+/** \note Readonly */
+#define PAJ7620_ADDR_PART_ID_1            (PAJ7620_ADDR_BASE + 0x01)  // R
+/** \note Write only */
+#define PAJ7620_ADDR_SUSPEND_CMD          (PAJ7620_ADDR_BASE + 0x03)  // W
+/** \note Read/Write */
+#define PAJ7620_ADDR_GES_PS_DET_MASK_0    (PAJ7620_ADDR_BASE + 0x41)  // RW
+/** \note Read/Write */
+#define PAJ7620_ADDR_GES_PS_DET_MASK_1    (PAJ7620_ADDR_BASE + 0x42)  // RW
+/** \note Readonly */
+#define PAJ7620_ADDR_GES_PS_DET_FLAG_0    (PAJ7620_ADDR_BASE + 0x43)  // R
+/** \note Readonly */
+#define PAJ7620_ADDR_GES_PS_DET_FLAG_1    (PAJ7620_ADDR_BASE + 0x44)  // R
+/** \note Readonly */
+#define PAJ7620_ADDR_STATE_INDICATOR      (PAJ7620_ADDR_BASE + 0x45)  // R
+/** \note Read/Write */
+#define PAJ7620_ADDR_PS_HIGH_THRESHOLD    (PAJ7620_ADDR_BASE + 0x69)  // RW
+/** \note Read/Write */
+#define PAJ7620_ADDR_PS_LOW_THRESHOLD     (PAJ7620_ADDR_BASE + 0x6A)  // RW
+/** \note Readonly */
+#define PAJ7620_ADDR_PS_APPROACH_STATE    (PAJ7620_ADDR_BASE + 0x6B)  // R
+/** \note Readonly */
+#define PAJ7620_ADDR_PS_RAW_DATA          (PAJ7620_ADDR_BASE + 0x6C)  // R
+/** \note Readonly - [7:0] */
+#define PAJ7620_ADDR_OBJECT_CENTER_X_LSB  (PAJ7620_ADDR_BASE + 0xAC)  // R
+/** \note Readonly - [4:0] */
+#define PAJ7620_ADDR_OBJECT_CENTER_X_MSB  (PAJ7620_ADDR_BASE + 0xAD)  // R
+/** \note Readonly - [7:0] */
+#define PAJ7620_ADDR_OBJECT_CENTER_Y_LSB  (PAJ7620_ADDR_BASE + 0xAE)  // R
+/** \note Readonly - [4:0] */
+#define PAJ7620_ADDR_OBJECT_CENTER_Y_MSB  (PAJ7620_ADDR_BASE + 0xAF)  // R
+/** \note Readonly - [7:0] */
+#define PAJ7620_ADDR_OBJECT_BRIGHTNESS    (PAJ7620_ADDR_BASE + 0xB0)  // R
+/** \note Readonly - [7:0] */
+#define PAJ7620_ADDR_OBJECT_SIZE_LSB      (PAJ7620_ADDR_BASE + 0xB1)  // R
+/** \note Readonly - [3:0] */
+#define PAJ7620_ADDR_OBJECT_SIZE_MSB      (PAJ7620_ADDR_BASE + 0xB2)  // R
+/** \note Readonly - [4:0] */
+#define PAJ7620_ADDR_WAVE_COUNT           (PAJ7620_ADDR_BASE + 0xB7)  // R
+/** \note Readonly */
+#define PAJ7620_ADDR_NO_OBJECT_COUNT      (PAJ7620_ADDR_BASE + 0xB8)  // R
+/** \note Readonly */
+#define PAJ7620_ADDR_NO_MOTION_COUNT      (PAJ7620_ADDR_BASE + 0xB9)  // R
+/** \note Readonly - [7:0] */
+#define PAJ7620_ADDR_OBJECT_VEL_X_LSB     (PAJ7620_ADDR_BASE + 0xC3)  // R
+/** \note Readonly - [3:0] */
+#define PAJ7620_ADDR_OBJECT_VEL_X_MSB     (PAJ7620_ADDR_BASE + 0xC4)  // R
+/** \note Readonly - [7:0] */
+#define PAJ7620_ADDR_OBJECT_VEL_Y_LSB     (PAJ7620_ADDR_BASE + 0xC5)  // R
+/** \note Readonly - [3:0] */
+#define PAJ7620_ADDR_OBJECT_VEL_Y_MSB     (PAJ7620_ADDR_BASE + 0xC6)  // R
+/** \note Readonly */
+#define PAJ7620_ADDR_GES_RESULT_0         (PAJ7620_ADDR_BASE + 0x43)  // R
+/** \note Readonly */
+#define PAJ7620_ADDR_GES_RESULT_1         (PAJ7620_ADDR_BASE + 0x44)  // R
+
+// Cursor Registers - Bank 0
+/** \note Readonly */
+#define PAJ7620_ADDR_CURSOR_X_LOW         (PAJ7620_ADDR_BASE + 0x3B)  // R
+/** \note Readonly */
+#define PAJ7620_ADDR_CURSOR_X_HIGH        (PAJ7620_ADDR_BASE + 0x3C)  // R
+/** \note Readonly */
+#define PAJ7620_ADDR_CURSOR_Y_LOW         (PAJ7620_ADDR_BASE + 0x3D)  // R
+/** \note Readonly */
+#define PAJ7620_ADDR_CURSOR_Y_HIGH        (PAJ7620_ADDR_BASE + 0x3E)  // R
+/** \note Readonly */
+#define PAJ7620_ADDR_CURSOR_INT           (PAJ7620_ADDR_BASE + 0x44)  // R
+/**@}*/
+
+
+// Proximity Registers - Bank 0
+//  Documentation best in v0.8 datasheet
+//  Only available in Proximity Detection (PS) mode
+/** \note Readonly - Single bit[0] - Approach == 1, Not approach == 0 */
+#define PAJ7620_ADDR_PS_APPROACH_STATE    (PAJ7620_ADDR_BASE + 0x6B)  // R
+/** \note Readonly - PS 8 bit data - 255 is "near", lower is "further"*/
+#define PAJ7620_ADDR_S_AVE_Y_BRIGHTNESS   (PAJ7620_ADDR_BASE + 0x6C)  // R
+
+
+// REGISTER BANK 1
+/** @name REGISTER BANK 1
+ *  Addresses used within register bank 1
+ */
+/**@{*/
+/** \note Read/Write */
+#define PAJ7620_ADDR_PS_GAIN              (PAJ7620_ADDR_BASE + 0x44)  // RW
+/** \note Read/Write */
+#define PAJ7620_ADDR_R_IDLE_TIME_0        (PAJ7620_ADDR_BASE + 0x65)  // RW
+/** \note Read/Write */
+#define PAJ7620_ADDR_R_IDLE_TIME_1        (PAJ7620_ADDR_BASE + 0x66)  // RW
+/** \note Read/Write */
+#define PAJ7620_ADDR_IDLE_S1_STEP_0       (PAJ7620_ADDR_BASE + 0x67)  // RW
+/** \note Read/Write */
+#define PAJ7620_ADDR_IDLE_S1_STEP_1       (PAJ7620_ADDR_BASE + 0x68)  // RW
+/** \note Read/Write */
+#define PAJ7620_ADDR_IDLE_S2_STEP_0       (PAJ7620_ADDR_BASE + 0x69)  // RW
+/** \note Read/Write */
+#define PAJ7620_ADDR_IDLE_S2_STEP_1       (PAJ7620_ADDR_BASE + 0x6A)  // RW
+/** \note Read/Write */
+#define PAJ7620_ADDR_OP_TO_S1_STEP_0      (PAJ7620_ADDR_BASE + 0x6B)  // RW
+/** \note Read/Write */
+#define PAJ7620_ADDR_OP_TO_S1_STEP_1      (PAJ7620_ADDR_BASE + 0x6C)  // RW
+/** \note Read/Write */
+#define PAJ7620_ADDR_OP_TO_S2_STEP_0      (PAJ7620_ADDR_BASE + 0x6D)  // RW
+/** \note Read/Write */
+#define PAJ7620_ADDR_OP_TO_S2_STEP_1      (PAJ7620_ADDR_BASE + 0x6E)  // RW
+/** \note Read/Write */
+#define PAJ7620_ADDR_OPERATION_ENABLE     (PAJ7620_ADDR_BASE + 0x72)  // RW
+
+// Cursor Registers - Bank 1
+/** \note Read/Write */
+#define PAJ7620_ADDR_LENS_ORIENTATION     (PAJ7620_ADDR_BASE + 0x04)  // RW
+/**@}*/
+
+/** @name Register bank IDs */
+/**@{*/
+#define PAJ7620_BANK0                     0x00
+#define PAJ7620_BANK1                     0x01
+/**@}*/
+
+/** @name Suspend Control commands
+* Written to #PAJ7620_ADDR_SUSPEND_CMD
+* */
+/**@{*/
+/** Wakeup the device */
+#define PAJ7620_I2C_WAKEUP                0x01
+/** Suspend the device */
+#define PAJ7620_I2C_SUSPEND               0x00
+/**@}*/
+
+/** @name Enable Control commands
+ * Written to #PAJ7620_ADDR_OPERATION_ENABLE
+ */
+/**@{*/
+/** Enable the device to start reading data*/
+#define PAJ7620_ENABLE                    0x01
+/** Disable the device and stop reading data*/
+#define PAJ7620_DISABLE                   0x00
+/**@}*/
+
+/** @name Sensor FPS mode values for R_IDLE_TIME 
+ * Written to #PAJ7620_ADDR_R_IDLE_TIME_0
+ * \note These values come directly from PixArt contact/email
+ */
+/**@{*/
+/** Set to "normal" speed of 120 fps*/
+#define PAJ7620_NORMAL_SPEED              0xAC
+/** Set to "game mode" speed of 240 fps*/
+#define PAJ7620_GAME_SPEED                0x30
+/**@}*/
+
+
+/** @name Gesture Bit Masks
+ * Return values from gesture I2C memory reads in Bank 0 - 0x43 & 0x44
+ *
+ * \see #PAJ7620_ADDR_GES_RESULT_0
+ * \see #PAJ7620_ADDR_GES_RESULT_1
+ */
+/**@{*/
+/** Bit set -> Up gesture detected. \note Read from #PAJ7620_ADDR_GES_RESULT_0 */
+#define GES_UP_FLAG                       0x01
+/** Bit set -> Down gesture detected. \note Read from #PAJ7620_ADDR_GES_RESULT_0 */
+#define GES_DOWN_FLAG                     0x02
+/** Bit set -> Left gesture detected. \note Read from #PAJ7620_ADDR_GES_RESULT_0 */
+#define GES_LEFT_FLAG                     0x04
+/** Bit set -> Right gesture detected. \note Read from #PAJ7620_ADDR_GES_RESULT_0 */
+#define GES_RIGHT_FLAG                    0x08
+/** Bit set -> Forward gesture detected. \note Read from #PAJ7620_ADDR_GES_RESULT_0 */
+#define GES_FORWARD_FLAG                  0x10
+/** Bit set -> Backward gesture detected. \note Read from #PAJ7620_ADDR_GES_RESULT_0 */
+#define GES_BACKWARD_FLAG                 0x20
+/** Bit set -> Clockwise gesture detected. \note Read from #PAJ7620_ADDR_GES_RESULT_0 */
+#define GES_CLOCKWISE_FLAG                0x40
+/** Bit set -> Anticlockwise gesture detected. \note Read from #PAJ7620_ADDR_GES_RESULT_0 */
+#define GES_ANTI_CLOCKWISE_FLAG           0x80
+/** Bit set -> Wave gesture detected. \note Read from #PAJ7620_ADDR_GES_RESULT_1 */
+#define GES_WAVE_FLAG                     0x01      // Read from Bank0 - 0x44
+/**@}*/
+
+// Return values for cursor interrupt/status for cursor mode
+//  Read from Bank 0, reg 0x44
+#define CUR_HAS_OBJECT                    0x04      // Bit 2 - 0000 0100
+#define CUR_NO_OBJECT                     0x80      // Bit 7 - 1000 0000
+
+
+// Values for Corners mode
+#define GESTURE_RANGE_MAX                 3712      // Gesture range max value (experimental)
+#define GESTURE_RANGE_MIN                    0      // Gesture range min value
+#define GESTURE_RANGE_MID     ((GESTURE_RANGE_MAX - GESTURE_RANGE_MIN) / 2)
+#define CORNERS_BUFFER_WIDTH_PCT          0.20      // 20% of range is "buffer"/"middle"
+#define CORNERS_BUFFER_WIDTH  (int)((GESTURE_RANGE_MAX - GESTURE_RANGE_MIN) * CORNERS_BUFFER_WIDTH_PCT)
+#define CORNERS_BUFFER_LOWER  (int)(GESTURE_RANGE_MID - (CORNERS_BUFFER_WIDTH / 2))
+#define CORNERS_BUFFER_UPPER  (int)(GESTURE_RANGE_MID + (CORNERS_BUFFER_WIDTH / 2))
+
+
+/** Generated size of the register init array */
+#define INIT_REG_ARRAY_SIZE (sizeof(initRegisterArray)/sizeof(initRegisterArray[0]))
+
+///**
+// * Initial device register addresses and values.
+// * \note Puts device into gesture mode with various "normal" mode values.
+// * \note Values taken from PixArt reference documentation v0.8 & v1.0 - see <a href="https://github.com/acrandal/RevEng_PAJ7620/wiki">wiki</a> for files
+// */
+//#ifdef PROGMEM_COMPATIBLE
+//const unsigned short initRegisterArray[] PROGMEM = {
+//#else
+//const unsigned short initRegisterArray[] = {
+//#endif
+//    0xEF00,       // Bank 0
+//    0x4100,       // Disable interrupts for first 8 gestures
+//    0x4200,       // Disable wave (and other modes') interrupt(s)
+//    0x3707,
+//    0x3817,
+//    0x3906,
+//    0x4201,
+//    0x462D,
+//    0x470F,
+//    0x483C,
+//    0x4900,
+//    0x4A1E,
+//    0x4C22,
+//    0x5110,
+//    0x5E10,
+//    0x6027,
+//    0x8042,
+//    0x8144,
+//    0x8204,
+//    0x8B01,
+//    0x9006,
+//    0x950A,
+//    0x960C,
+//    0x9705,
+//    0x9A14,
+//    0x9C3F,
+//    0xA519,
+//    0xCC19,
+//    0xCD0B,
+//    0xCE13,
+//    0xCF64,
+//    0xD021,
+//    0xEF01,       // Bank 1
+//    0x020F,
+//    0x0310,
+//    0x0402,
+//    0x2501,
+//    0x2739,
+//    0x287F,
+//    0x2908,
+//    0x3EFF,
+//    0x5E3D,
+//    0x6596,       // R_IDLE_TIME LSB - Set sensor speed to 'normal speed' - 120 fps
+//    0x6797,
+//    0x69CD,
+//    0x6A01,
+//    0x6D2C,
+//    0x6E01,
+//    0x7201,
+//    0x7335,
+//    0x7400,       // Set to gesture mode
+//    0x7701,
+//    0xEF00,       // Bank 0
+//    0x41FF,       // Re-enable interrupts for first 8 gestures
+//    0x4201        // Re-enable interrupts for wave gesture
+//};
+//
+//
+///** Generated size of the register set gesture mode array */
+//#define SET_GES_MODE_REG_ARRAY_SIZE (sizeof(setGestureModeRegisterArray)/sizeof(setGestureModeRegisterArray[0]))
+//
+///**
+// * Gesture mode specific register addresses and values
+// * \note Puts device into gesture mode with appropriate values.
+// * \note Values taken from PixArt reference documentation v0.8 & v1.0 - see <a href="https://github.com/acrandal/RevEng_PAJ7620/wiki">wiki</a> for files
+// */
+//#ifdef PROGMEM_COMPATIBLE
+//const unsigned short setGestureModeRegisterArray[] PROGMEM = {
+//#else
+//const unsigned short setGestureModeRegisterArray[] = {
+//#endif
+//    0xEF00,       // Bank 0
+//    0x4100,       // Disable interrupts for first 8 gestures
+//    0x4200,       // Disable wave (and other mode's) interrupt(s)
+//    0x483C,
+//    0x4900,
+//    0x5110,
+//    0x8320,
+//    0x9ff9,
+//    0xEF01,       // Bank 1
+//    0x011E,
+//    0x020F,
+//    0x0310,
+//    0x0402,
+//    0x4140,
+//    0x4330,
+//    0x6596,       // R_IDLE_TIME  - Normal mode LSB "120 fps" (supposedly)
+//    0x6600,
+//    0x6797,
+//    0x6801,
+//    0x69CD,
+//    0x6A01,
+//    0x6bb0,
+//    0x6c04,
+//    0x6D2C,
+//    0x6E01,
+//    0x7400,       // Set gesture mode
+//    0xEF00,       // Bank 0
+//    0x41FF,       // Re-enable interrupts for first 8 gestures
+//    0x4201        // Re-enable interrupts for wave gesture
+//};
+//
+//
+///** Generated size of the register set cursor mode array */
+//#define SET_CURSOR_MODE_REG_ARRAY_SIZE (sizeof(setCursorModeRegisterArray)/sizeof(setCursorModeRegisterArray[0]))
+//
+///**
+// * Cursor mode specific register addresses and values
+// * \note Puts device into cursor mode with reasonable basic values.
+// * \note Values taken from PixArt reference documentation v0.8 & v1.0 - see <a href="https://github.com/acrandal/RevEng_PAJ7620/wiki">wiki</a> for files
+// */
+//#ifdef PROGMEM_COMPATIBLE
+//const unsigned short setCursorModeRegisterArray[] PROGMEM = {
+//#else
+//const unsigned short setCursorModeRegisterArray[] = {
+//#endif
+//    0xEF00,   // Set Bank 0
+//    0x3229,   // Default  29  [0] Cursor use top - def 1
+//              //              [1] Cursor Use BG Model - def 0
+//              //              [2] Cursor Invert Y - def 0       -- Not sure, doesn't seem to work
+//              //              [3] Cursor Invert X - def 1
+//              //              [5:4] Cursor top Ratio - def 0x2
+//    0x3301,   // Default  01  R_PositionFilterStartSizeTh [7:0]
+//    0x3400,   // Default  00  R_PositionFilterStartSizeTh [8]
+//    0x3501,   // Default  01  R_ProcessFilterStartSizeTh [7:0]
+//    0x3600,   // Default  00  R_ProcessFilterStartSizeTh [8]
+//    0x3703,   // Default  09  R_CursorClampLeft [4:0]
+//    0x381B,   // Default  15  R_CursorClampRight [4:0]
+//    0x3903,   // Default  0A  R_CursorClampUp [4:0]
+//    0x3A1B,   // Default  12  R_CursorClampDown [4:0]
+//    0x4100,   // Interrupt enable mask - Should be 00 (disable gestures)
+//              //              All gesture flags [7:0]
+//    0x4284,   // Interrupt enable mask - Should be 84 (0b 1000 0100)
+//              //              bit 0: Wave, wave mode use only
+//              //              bit 1: Proximity, proximity mode use only
+//              //              bit 2: Has Object, cursor mode use only
+//              //              bit 3: Wake up trigger, trigger mode use only
+//              //              bit 4: Confirm, confirm mode use only
+//              //              bit 5: Abort, confirm mode use only
+//              //              bit 6: N/A
+//              //              bit 7:No Object, cursor mode use only
+//    0x8B01,   // Default  10  R_Cursor_ObjectSizeTh [7:0]
+//    0x8C07,   // Default  07  R_PositionResolution [2:0]
+//    0xEF01,   // Set Bank 1
+//    0x0403,   // Invert X&Y Axes in lens for GUI coordinates
+//              //  Where (0,0) is in upper left, positive down (Y) and right (X)
+//    0x7403,   // Enable cursor mode 0 - gesture, 3 - cursor, 5 - proximity
+//    0xEF00    // Set Bank 0 (parking it)
+//};
+
+
+/**
+ * PAJ7620 Device API class - As developed by RevEng Devs
+ *
+ * Provides a user friendly interface to the PAJ7620 device
+ * \author Aaron S. Crandall
+ */
+//class RevEng_PAJ7620
+//{
+ // public:
+    uint8_t beginPAJ7620();
+//  uint8_t begin(TwoWire * chosenWireHandle);    // Ex: begin(&Wire1)
+
+    void disablePAJsensor();                 // Suspend interrupts (both pin and registers)
+    void enablePAJsensor();                  // Resume interrupts (both pin and registers)
+
+    /** @name Setting sensor mode interface */
+    /**@{*/
+    void setGestureMode();          // Put sensor into gesture mode
+    void setCursorMode();           // Put sensor into cursor mode
+    /**@}*/
+
+    void invertXAxis();             // Invert (toggle) sensor's X (vertical) axis
+    void invertYAxis();             // Invert (toggle) sensors' Y (vertical) axis
+
+    void setNormalSpeed();          // Set sensor sampling rate to 120fps
+    void setGameSpeed();            // Set sensor sampling rate to 240fps
+
+    /** @name Gesture mode interface */
+    /**@{*/
+    Gesture readGesture();
+    void clearGestureInterrupts();
+
+    void setGestureEntryTime(unsigned long newGestureEntryTime);
+    void setGestureExitTime(unsigned long newGestureExitTime);
+
+    int getWaveCount();             // 0..15 waves
+    int getNoObjectCount();         // 0..255 ticks (about 7.2ms each in normal, 4.1ms in game)
+    int getNoMotionCount();         // 0..12 ticks
+ 
+    int getObjectBrightness();      // 255 is max
+    int getObjectSize();            // 900 is max (30x30 pixel array)
+
+    int getObjectCenterX();         // 0..4096 (likey less like cursor mode)
+    int getObjectCenterY();         // 0..4096 (likey less like cursor mode)
+    bool isObjectInView();          // True if an object is in view
+
+    int getObjectVelocityX();       // Velocity of object on X direction
+    int getObjectVelocityY();       // Velocity of object on Y direction
+    int getObjectVelocityX_raw();   // Velocity of object on X direction - RAW data
+    int getObjectVelocityY_raw();   // Velocity of object on Y direction - RAW data
+    /**@}*/
+
+    /** @name Corners interface */
+    /**@{*/
+    Corner getCorner();             // Returns which corner the object is in
+    /**@}*/
+
+    /** @name Cursor mode interface */
+    /**@{*/
+    bool isCursorInView();          // Cursor object in view
+
+    int getCursorX();               // Get cursor's X axis location
+    int getCursorY();               // Get cusors's Y axis location
+    /**@}*/
+
+    /** @name Proxmity mode interface */
+    /**@{*/
+    //int getProximityDistance();     // Read an object's "proximity 255..0"
+    /**@}*/
+
+//  private:
+//    unsigned long gestureEntryTime; // User set gesture entry delay in ms (default: 0)
+//    unsigned long gestureExitTime;  // User set gesture exit delay in ms (default 200)
+
+//    TwoWire *wireHandle;            // User selected Wire bus (default: Wire)
+
+    uint8_t writeRegister(uint8_t i2cAddress, uint8_t dataByte);
+    uint8_t readRegister(uint8_t i2cAddress, uint8_t byteCount, uint8_t data[]);
+
+    void selectRegisterBank(Bank_e bank);
+
+    uint8_t getGesturesReg0(uint8_t data[]);
+    uint8_t getGesturesReg1(uint8_t data[]);
+    Gesture forwardBackwardGestureCheck(Gesture initialGesture);
+
+    bool isPAJ7620UDevice();
+    void initializeDeviceSettings();
+
+    void writeRegisterArray(const unsigned short array[], int arraySize);
+//};
+
+#endif

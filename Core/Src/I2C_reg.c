@@ -246,7 +246,7 @@ void I2C_2_Read (uint8_t Address, uint8_t *buffer, uint8_t size)
 		
 		/**** STEP 1-b ****/	
 		I2C2->CR1 &= ~(1<<10);  // clear the ACK bit
-		uint8_t temp = I2C2->SR1 | I2C1->SR2;  // read SR1 and SR2 to clear the ADDR bit.... EV6 condition
+		uint8_t temp = I2C2->SR1 | I2C2->SR2;  // read SR1 and SR2 to clear the ADDR bit.... EV6 condition
 		I2C2->CR1 |= (1<<9);  // Stop I2C
 
 		/**** STEP 1-c ****/	
@@ -265,7 +265,7 @@ void I2C_2_Read (uint8_t Address, uint8_t *buffer, uint8_t size)
 		while (!(I2C2->SR1 & (1<<1)));  // wait for ADDR bit to set
 		
 		/**** STEP 2-b ****/
-		uint8_t temp = I2C2->SR1 | I2C1->SR2;  // read SR1 and SR2 to clear the ADDR bit
+		uint8_t temp = I2C2->SR1 | I2C2->SR2;  // read SR1 and SR2 to clear the ADDR bit
 		
 		while (remaining>2)
 		{
