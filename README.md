@@ -2,6 +2,7 @@
 https://www.facebook.com/100057535304340/videos/pcb.1051686950092472/1329553188243461
 
 [Kicad FM_radio_STM32F411.zip](https://github.com/user-attachments/files/18311717/Kicad.FM_radio_STM32F411.zip)
+[Display14seg_HT16K33.zip](https://github.com/user-attachments/files/18311841/Display14seg_HT16K33.zip)
 
 !!! The branch "04_01_25_adaugare_watchdog" contains all the features.
 - encoder for volume (push button seek down)
