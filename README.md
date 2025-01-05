@@ -1,0 +1,11 @@
+TEF6686 FM radio with STM32F411 Blackpill 
+- encoder for volume (push button seek down)
+- encoder for frequency (push button seek up)
+- 5 memory (short press call station, long press save current frequency on extern flash)
+- gesture control with PAJ7620
+     - gesture up -> volum up
+     - gesture down -> volum down
+     - gesture left -> seek down
+     - gesture right -> seek up
+     - clockwise/anticlockwise -> change frequency
+- serial output for rds info, etc.
