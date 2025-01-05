@@ -296,7 +296,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  HAL_IWDG_Refresh(&hiwdg);
+      HAL_IWDG_Refresh(&hiwdg);
       contor++;
       showFmSeek();
                    //stereo_status = getStereoStatus(); // very very slow function!!!
