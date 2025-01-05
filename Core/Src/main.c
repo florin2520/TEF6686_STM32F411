@@ -304,8 +304,8 @@ int main(void)
       read_volume_encoder();
       read_frequency_encoder();
       show_rds_informations();
-	  read_write_memory_stations_vol();
-	  read_PAJ_gesture();
+      read_write_memory_stations_vol();
+      read_PAJ_gesture();
   }
   /* USER CODE END 3 */
 }
