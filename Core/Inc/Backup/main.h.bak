@@ -54,6 +54,7 @@ void read_frequency_encoder();
 void show_rds_informations();
 void read_seek_up_down_gpio();
 void read_PAJ_gesture();
+void read_PAJ_gesture_2();
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/

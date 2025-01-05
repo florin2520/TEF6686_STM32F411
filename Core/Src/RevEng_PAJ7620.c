@@ -56,6 +56,7 @@
 #include "RevEng_PAJ7620.h"
 #include "stm32f4xx_hal.h"
 
+
 extern I2C_HandleTypeDef hi2c2;
 
 /**
@@ -250,7 +251,7 @@ const unsigned short setCursorModeRegisterArray[] = {
 //uint8_t begin(TwoWire *chosenWireHandle)
 uint8_t beginPAJ7620()
 {
-  //print_serial2_message("DEBUG 1");
+  print_serial2_message("DEBUG 1");
   // Reasonable timing delay values to make algorithm insensitive to
   //  hand entry and exit moves before and after detecting a gesture
   gestureEntryTime = 0;
@@ -263,13 +264,13 @@ uint8_t beginPAJ7620()
   //wireHandle->begin();                // Start the I2C bus via wire library
   //HAL_Delay(1);
   uint32_t a;
-  for (uint32_t i = 0; i < 500000; i++)
+  for (uint32_t i = 0; i < 800000; i++)
   {
     a = i;
     a++;
   }
 
-  //print_serial2_message("DEBUG 2");
+  print_serial2_message("DEBUG 2");
   /* There's two register banks (0 & 1) to be selected between.
    * BANK0 is where most data collection operations happen, so it's default.
    * Selecting the bank is done here twice for a reason. When the 7620 turns
@@ -324,14 +325,14 @@ uint8_t writeRegister(uint8_t i2cAddress, uint8_t dataByte)
 //  wireHandle->write(i2cAddress);                         // send register address
 //  wireHandle->write(dataByte);                           // send value to write
 //  resultCode = wireHandle->endTransmission();            // end transmission
-  //print_serial2_message("DEBUG 3"); ///last ok
+  //print_serial2_message("wr st"); ///last ok
   I2C_2_Start ();
   I2C_2_Address (PAJ7620_I2C_BUS_ADDR); // todo
   I2C_2_Write (i2cAddress);
   I2C_2_Write (dataByte);
   I2C_2_Stop ();
 
-  //print_serial2_message("DEBUG 4");
+  //print_serial2_message("wr end");
   return resultCode;
 }
 
@@ -349,6 +350,7 @@ uint8_t readRegister(uint8_t i2cAddress, uint8_t byteCount, uint8_t data[])
 //  wireHandle->beginTransmission(PAJ7620_I2C_BUS_ADDR);
 //  wireHandle->write(i2cAddress);
 //  result_code = wireHandle->endTransmission();
+	//print_serial2_message("read st");
 	I2C_2_Start ();
 	I2C_2_Address (PAJ7620_I2C_BUS_ADDR);
 	I2C_2_Write (i2cAddress);  // adresa registrului intern
@@ -358,6 +360,7 @@ uint8_t readRegister(uint8_t i2cAddress, uint8_t byteCount, uint8_t data[])
 	//I2C_3_Read (PAJ7620_I2C_BUS_ADDR+0x01, data, byteCount);
 	I2C_2_Read (PAJ7620_I2C_READ_BUS_ADDR, data, byteCount);
 	I2C_2_Stop ();
+	//print_serial2_message("read end");
 //	  uint32_t a;
 //	  for (uint32_t i = 0; i < 10000; i++)
 //	  {

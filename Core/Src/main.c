@@ -35,6 +35,7 @@
 #include "main.h"
 #include "adc.h"
 #include "i2c.h"
+#include "iwdg.h"
 #include "spi.h"
 #include "tim.h"
 #include "usart.h"
@@ -51,6 +52,7 @@
 #include "display_functions.h"
 #include "W25Qxx.h"
 #include "RevEng_PAJ7620.h"
+//#include "paj7620.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -63,6 +65,14 @@
 //#define TEF6686_I2C_ADDRESS        0x64
 //#define DISPLAY_ADDRESS 0x70<<1
 #define DISPLAY_ADDRESS 0x70<<1  //
+
+/*
+    Notice: When you want to recognize the Forward/Backward gestures, your gestures' reaction time must less than GES_ENTRY_TIME(0.8s).
+            You also can adjust the reaction time according to the actual circumstance.
+*/
+#define GES_REACTION_TIME	500	 // You can adjust the reaction time according to the actual circumstance.
+#define GES_ENTRY_TIME		800	 // When you want to recognize the Forward/Backward gestures, your gestures' reaction time must less than GES_ENTRY_TIME(0.8s).
+#define GES_QUIT_TIME		1000
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -124,8 +134,8 @@ char memory3[] = "MEMORY 3 ";
 char memory4[] = "MEMORY 4 ";
 char memory5[] = "MEMORY 5 ";
 char fm_radio[] = "FM RADIO ";
-char search_up[] = "SEARCH>> ";
-char search_down[] = "<<SEARCH ";
+char search_up[] = "SEARCH->";
+char search_down[] = "<-SEARCH";
 char hello[]= " HELLO ";
 
 extern char mess_frequency[30];
@@ -225,10 +235,21 @@ int main(void)
   MX_I2C3_Init();
   MX_TIM5_Init();
   MX_TIM4_Init();
+  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
   W25Q_Reset();       // trebuie apelat aici, nu inainte de while
   ID = W25Q_ReadID();
 
+//  uint8_t paj_error = 0;
+//  paj_error = paj7620Init();			// initialize Paj7620 registers
+//  if (paj_error) {
+//      print_serial2_message_number("INIT ERROR,CODE: ", paj_error);
+//  } else {
+//      print_serial2_message("PAJ init OK");
+//  }
+  beginPAJ7620();
+  enablePAJsensor();
+  HAL_IWDG_Refresh(&hiwdg); //
   HAL_TIM_Encoder_Start_IT(&htim2, TIM_CHANNEL_ALL);  // volum
   HAL_TIM_Encoder_Start_IT(&htim3, TIM_CHANNEL_ALL);  // frecventa
   /* USER CODE END 2 */
@@ -238,24 +259,29 @@ int main(void)
 
   HAL_GPIO_WritePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin, GPIO_PIN_RESET);
   print_serial2_message("Start radio...");
+  HAL_IWDG_Refresh(&hiwdg);
   uint8_t start_rd_ok = init_radio();
+  HAL_IWDG_Refresh(&hiwdg); //
   powerOn();
+  HAL_IWDG_Refresh(&hiwdg);
   Radio_SetBand(FM1_BAND); // ??
+  HAL_IWDG_Refresh(&hiwdg);
   current_band = Radio_GetCurrentBand(); // 1 => 65-108
+  HAL_IWDG_Refresh(&hiwdg);
   load_default_station_and_volume();
   sprintf(message_frequency, "START RADIO CODE = %i \r", start_rd_ok); // 1 = OK, 2 = Doesn't exist, 0 = busy
   print_serial2_message(message_frequency);
-
+  //HAL_IWDG_Refresh(&hiwdg); //
   uint16_t current_freq = getFrequency();
   sprintf(message_frequency, "curentFrecv = %i MHz \r", current_freq);
   print_serial2_message(message_frequency);
   change_rds_display = 0;
-  HAL_Delay(500);
+  HAL_Delay(100);
   HAL_GPIO_WritePin(HCMS_CE_LED_GPIO_Port, HCMS_CE_LED_Pin, GPIO_PIN_SET);
-
+  HAL_IWDG_Refresh(&hiwdg);
   begin_disp(DISPLAY_ADDRESS);  // pass in the address
   display_static_message(fm_radio);
-  HAL_Delay(1500);
+  HAL_Delay(1000);
   clear_display();
 
   freq_vol_changed_manual = true;
@@ -265,14 +291,12 @@ int main(void)
   populate_freq_array(freq);
   change_rds_display = 1;
 
-  beginPAJ7620();
-  enablePAJsensor();
-
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  HAL_IWDG_Refresh(&hiwdg);
       contor++;
       showFmSeek();
                    //stereo_status = getStereoStatus(); // very very slow function!!!
@@ -282,7 +306,6 @@ int main(void)
       show_rds_informations();
 	  read_write_memory_stations_vol();
 	  read_PAJ_gesture();
-
   }
   /* USER CODE END 3 */
 }
@@ -304,8 +327,9 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 12;
@@ -713,7 +737,7 @@ void read_write_memory_stations_vol()
 				 {
 
 	     	    	 current_count++;
-	                 if (current_count > 1000000)  //
+	                 if (current_count > 600000)  //
 	                 {
 	                     current_count = 0;
 	                     save_to_flash_m1 = true;
@@ -756,7 +780,7 @@ void read_write_memory_stations_vol()
 				 uint32_t a;
 				 for (uint32_t i = 0; i < 14900000; i++)
 				 {
-				    a = i;
+					 HAL_IWDG_Refresh(&hiwdg);
 				    a++;
 				 }
 				 read_from_flash_m1 = true;
@@ -771,7 +795,7 @@ void read_write_memory_stations_vol()
 			 	{
 
 			      	 current_count++;
-			         if (current_count > 1000000)  //
+			         if (current_count > 600000)  //
 			         {
 			            current_count = 0;
 			            save_to_flash_m2 = true;
@@ -814,7 +838,7 @@ void read_write_memory_stations_vol()
 			 	uint32_t a;
 			 	for (uint32_t i = 0; i < 14900000; i++)
 			 	{
-			 		a = i;
+			 		HAL_IWDG_Refresh(&hiwdg);
 			 		a++;
 			    }
 			 	read_from_flash_m2 = true;
@@ -828,7 +852,7 @@ void read_write_memory_stations_vol()
 			 	if(HAL_GPIO_ReadPin (GPIOA, GPIO_PIN_11) == 0)  // is PA11 still pressed?
 			 	{
 			 		current_count++;
-			 		 if (current_count > 1000000)
+			 		 if (current_count > 600000)
 			 		 {
 			 		    current_count = 0;
 			 		    save_to_flash_m3 = true;
@@ -871,7 +895,7 @@ void read_write_memory_stations_vol()
 			 	uint32_t a;
 			 	for (uint32_t i = 0; i < 14900000; i++)
 			 	{
-			 		a = i;
+			 		HAL_IWDG_Refresh(&hiwdg);
 			 		a++;
 			 	}
 			 	read_from_flash_m3 = true;
@@ -885,7 +909,7 @@ void read_write_memory_stations_vol()
 				if(HAL_GPIO_ReadPin (GPIOA, GPIO_PIN_12) == 0)  // is PA12 still pressed?
 				{
 					 current_count++;
-					 if (current_count > 1000000)  //
+					 if (current_count > 600000)  //
 					 {
 						 current_count = 0;
 						 save_to_flash_m4 = true;
@@ -928,7 +952,7 @@ void read_write_memory_stations_vol()
 				uint32_t a;
 				for (uint32_t i = 0; i < 14900000; i++)
 				{
-					 a = i;
+					 HAL_IWDG_Refresh(&hiwdg);
 					 a++;
 				}
 				read_from_flash_m4 = true;
@@ -942,7 +966,7 @@ void read_write_memory_stations_vol()
 				if(HAL_GPIO_ReadPin (GPIOA, GPIO_PIN_15) == 0)  // is PA15 still pressed?
 				{
 					 current_count++;
-					 if (current_count > 1000000)
+					 if (current_count > 600000)
 					 {
 					 	current_count = 0;
 			 		    save_to_flash_m5 = true;
@@ -985,7 +1009,7 @@ void read_write_memory_stations_vol()
 				uint32_t a;
 				for (uint32_t i = 0; i < 14900000; i++)
 				{
-					 a = i;
+					HAL_IWDG_Refresh(&hiwdg);
 					 a++;
 				}
 				read_from_flash_m5 = true;
@@ -1533,9 +1557,114 @@ void read_PAJ_gesture()
 //			  print_serial2_message(str1);
 //		  }
 		  PAJ_event = false;
-		  //HAL_Delay(1);
+		  HAL_Delay(5);
 	  }
 }
+
+//void read_PAJ_gesture_2()
+//{
+//    uint8_t data = 0, data1 = 0, error;
+//
+//    error = paj7620ReadReg(0x43, 1, &data);				// Read Bank_0_Reg_0x43/0x44 for gesture result.
+//    if (!error) {
+//        switch (data) {								// When different gestures be detected, the variable 'data' will be set to different values by paj7620ReadReg(0x43, 1, &data).
+//            case GES_RIGHT_FLAG:
+//            	HAL_Delay(GES_ENTRY_TIME);
+//                paj7620ReadReg(0x43, 1, &data);
+//                if (data == GES_FORWARD_FLAG)
+//                {
+//                    print_serial2_message("Forward");
+//                    HAL_Delay(GES_QUIT_TIME);
+//                }
+//                else if (data == GES_BACKWARD_FLAG)
+//                {
+//                    print_serial2_message("Backward");
+//                    HAL_Delay(GES_QUIT_TIME);
+//                }
+//                else
+//                {
+//                    print_serial2_message("Right");
+//                }
+//                break;
+//            case GES_LEFT_FLAG:
+//            	HAL_Delay(GES_ENTRY_TIME);
+//                paj7620ReadReg(0x43, 1, &data);
+//                if (data == GES_FORWARD_FLAG)
+//                {
+//                    print_serial2_message("Forward");
+//                    HAL_Delay(GES_QUIT_TIME);
+//                }
+//                else if (data == GES_BACKWARD_FLAG)
+//                {
+//                    print_serial2_message("Backward");
+//                    HAL_Delay(GES_QUIT_TIME);
+//                }
+//                else
+//                {
+//                	print_serial2_message("Left");
+//                }
+//                break;
+//            case GES_UP_FLAG:
+//            	HAL_Delay(GES_ENTRY_TIME);
+//                paj7620ReadReg(0x43, 1, &data);
+//                if (data == GES_FORWARD_FLAG)
+//                {
+//                    print_serial2_message("Forward");
+//                    HAL_Delay(GES_QUIT_TIME);
+//                }
+//                else if (data == GES_BACKWARD_FLAG)
+//                {
+//                    print_serial2_message("Backward");
+//                    HAL_Delay(GES_QUIT_TIME);
+//                }
+//                else
+//                {
+//                    print_serial2_message("Up");
+//                }
+//                break;
+//            case GES_DOWN_FLAG:
+//            	HAL_Delay(GES_ENTRY_TIME);
+//                paj7620ReadReg(0x43, 1, &data);
+//                if (data == GES_FORWARD_FLAG)
+//                {
+//                    print_serial2_message("Forward");
+//                    HAL_Delay(GES_QUIT_TIME);
+//                }
+//                else if (data == GES_BACKWARD_FLAG)
+//                {
+//                    print_serial2_message("Backward");
+//                    HAL_Delay(GES_QUIT_TIME);
+//                }
+//                else
+//                {
+//                    print_serial2_message("Down");
+//                }
+//                break;
+//            case GES_FORWARD_FLAG:
+//                print_serial2_message("Forward");
+//                HAL_Delay(GES_QUIT_TIME);
+//                break;
+//            case GES_BACKWARD_FLAG:
+//                print_serial2_message("Backward");
+//                HAL_Delay(GES_QUIT_TIME);
+//                break;
+//            case GES_CLOCKWISE_FLAG:
+//                print_serial2_message("Clockwise");
+//                break;
+//            case GES_COUNT_CLOCKWISE_FLAG:
+//                print_serial2_message("anti-clockwise");
+//                break;
+//            default:
+//                paj7620ReadReg(0x44, 1, &data1);
+//                if (data1 == GES_WAVE_FLAG)
+//                {
+//                    print_serial2_message("wave");
+//                }
+//                break;
+//        }
+//    }
+//    HAL_Delay(100);
+//}
 /* USER CODE END 4 */
 
 /**
