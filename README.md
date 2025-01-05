@@ -1,4 +1,6 @@
 # TEF6686_STM32F411
+[Kicad FM_radio_STM32F411.zip](https://github.com/user-attachments/files/18311717/Kicad.FM_radio_STM32F411.zip)
+
 !!! The branch "04_01_25_adaugare_watchdog" contains all the features.
 - encoder for volume (push button seek down)
 - encoder for frequency (push button seek up)
